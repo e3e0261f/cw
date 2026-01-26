@@ -1,27 +1,28 @@
-use serde::{Deserialize, Serialize}; // 統一在這裡導入一次即可
 use std::collections::HashMap;
+use std::path::PathBuf;
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize)]
-pub struct Config {
-    pub webhook_url: String,
-}
-
-#[derive(Debug, Deserialize)]
+// 這裡定義從 typos.json 讀取的結構
+#[derive(Deserialize)]
 pub struct TypoData {
     pub typos: HashMap<String, String>,
-    pub regex_overrides: HashMap<String, String>,
+    #[serde(default)] // 如果 json 沒寫這項，就給空列表
+    pub regex: HashMap<String, String>,
 }
 
-#[derive(Clone)]
+// 這裡定義每個檔案的處理報告
 pub struct FileReport {
     pub input_name: String,
+    pub output_name: String,
+    pub temp_log_path: PathBuf,
     pub status: ResultStatus,
-    pub issues_summary: Vec<String>,
+    pub verif_errors: Vec<String>,
+    pub quality_advices: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+// 處理狀態
 pub enum ResultStatus {
     Success,
-    Warning,
-    Error,
+    ConvertError,
+    VerifWarning,
 }

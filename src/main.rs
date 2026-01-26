@@ -1,173 +1,175 @@
 mod models;
-mod utils;
-mod converter;
-mod auditor;
+mod audit;
 
 use opencc_rust::*;
 use aho_corasick::AhoCorasick;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use chrono::Local;
-
-use models::{TypoData, FileReport, ResultStatus, Config};
-use converter::run_conversion_full_view;
-use auditor::process_audit;
-
-// 輔助函式：將訊息同時印到螢幕並寫入日誌
-fn log_info(log_path: &PathBuf, msg: &str) {
-    let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
-    let log_entry = format!("[{}] {}\n", timestamp, msg);
-
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
-        let _ = file.write_all(log_entry.as_bytes());
-    }
-}
+use models::{TypoData, FileReport, ResultStatus};
+use audit::*;
 
 fn main() -> io::Result<()> {
-    // 1. 初始化日誌與時間 (修復報錯的核心)
-    let temp_log = env::temp_dir().join(format!("cw_{}.log", Local::now().format("%Y%m%d")));
-    let current_time = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let raw_args: Vec<String> = env::args().skip(1).collect();
+    let is_compare_mode = raw_args.iter().any(|arg| arg == "-a");
+    let file_paths: Vec<String> = raw_args.into_iter().filter(|arg| arg != "-a").collect();
 
-    // 2. 獲取參數
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        utils::print_help();
+    if file_paths.is_empty() {
+        println!("用法: cw *.srt 或 cw -a A.srt B.srt");
         return Ok(());
     }
 
-    // 3. 判定標籤
-    let use_phrase_mode = args.iter().any(|arg| arg == "-p");
-    let wants_broadcast = args.iter().any(|arg| arg == "-b");
-    let is_audit_mode = args.iter().any(|arg| arg == "-a");
+    // 初始化引擎
+    let (ac, typo_map, patterns, regex_rules) = load_typo_engine();
 
-    // 4. 提取路徑 (排除以 - 開頭的參數)
-    let paths: Vec<PathBuf> = args.iter().skip(1)
-        .filter(|a| !a.starts_with('-'))
-        .map(|a| Path::new(a).to_path_buf())
-        .collect();
-
-    // 5. 讀取 Webhook 設定
-    let mut webhook_url: Option<String> = None;
-    if wants_broadcast {
-        let config_abs_path = "/home/lee/BOok/PJct/cw/config.json";
-        if let Ok(config_str) = fs::read_to_string(config_abs_path) {
-            if let Ok(conf) = serde_json::from_str::<Config>(&config_str) {
-                webhook_url = Some(conf.webhook_url);
-            }
-        }
-    }
-
-    // 6. 載入引擎
-    let (ac_engine, typo_map, patterns, regex_rules) = load_typo_engine(&temp_log);
-    let opencc_config = if use_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
-    let converter = OpenCC::new(opencc_config).expect("OpenCC 啟動失敗");
-
-    let mut reports = Vec::new();
-
-    // 7. 邏輯分支：審核模式 vs 轉換模式
-    if is_audit_mode {
-        if paths.len() < 2 {
-            println!("\x1b[1;31m❌ 錯誤：審核模式需要提供原文與譯文兩個路徑。\x1b[0m");
-            println!("用法: cw -a <原文檔案> <譯文檔案>");
+    if is_compare_mode {
+        if file_paths.len() != 2 {
+            println!("錯誤: 對比模式需要兩個檔案路徑。");
             return Ok(());
         }
-        let original = paths[0].to_string_lossy().to_string();
-        let translated = paths[1].to_string_lossy().to_string();
-
-        println!("\x1b[1;33m🔍 審核對比模式啟動...\x1b[0m");
-        let (err_count, _) = process_audit(
-            &original, &translated, &temp_log, &ac_engine, &typo_map, &patterns, true, opencc_config
-        ).unwrap_or((0, vec![]));
-
-        reports.push(FileReport {
-            input_name: original,
-            status: if err_count == 0 { ResultStatus::Success } else { ResultStatus::Warning },
-            issues_summary: vec![format!("對比完成，發現 {} 處差異", err_count)]
-        });
+        run_comparison_live(&file_paths[0], &file_paths[1], &ac, &typo_map, &patterns, &regex_rules)?;
     } else {
-        let final_path = match paths.get(0) {
-            Some(p) if p.exists() => p,
-            _ => {
-                println!("\x1b[1;31m❌ 錯誤：未指定有效的檔案路徑。\x1b[0m");
-                return Ok(());
-            }
-        };
-        let path_str = final_path.to_string_lossy().to_string();
-        let out_name = final_path.with_extension("txt").to_str().unwrap().to_string();
+        let total = file_paths.len();
+        println!("\n\x1b[1;36m🚀 啟動批次任務：共處理 {} 個檔案\x1b[0m", total);
+        
+        let mut reports = Vec::new();
+        let converter = OpenCC::new(DefaultConfig::S2TWP).expect("OpenCC 啟動失敗");
 
-        println!("\x1b[1;34m🎯 目標確認：\x1b[0m {}", path_str);
-        println!("\x1b[1;34m📂 轉換開始...\x1b[0m");
+        for (i, path_str) in file_paths.iter().enumerate() {
+            let path = Path::new(&path_str);
+            if path.is_dir() { continue; }
 
-        match run_conversion_full_view(&converter, &path_str, &out_name, &regex_rules, use_phrase_mode) {
-            Ok(_) => {
-                let (err_count, _) = process_audit(
-                    &path_str, &out_name, &temp_log, &ac_engine, &typo_map, &patterns, false, opencc_config
-                ).unwrap_or((0, vec![]));
+            let out_name = path.with_extension("txt").to_str().unwrap().to_string();
+            let stem = path.file_stem().unwrap().to_str().unwrap();
+            let temp_log = env::temp_dir().join(format!("cntw_{}.log", stem));
 
-                reports.push(FileReport {
-                    input_name: path_str.clone(),
-                    status: if err_count == 0 { ResultStatus::Success } else { ResultStatus::Warning },
-                    issues_summary: vec![format!("共發現 {} 處差異", err_count)]
-                });
-            },
-            Err(e) => {
-                reports.push(FileReport {
-                    input_name: path_str.clone(),
-                    status: ResultStatus::Error,
-                    issues_summary: vec![format!("失敗: {}", e)]
-                });
+            println!("\n\x1b[1;35m➔ 檔案 [{}/{}] : {}\x1b[0m", i + 1, total, path_str);
+            println!("  \x1b[1;34m[1/3] 正在執行簡繁翻譯...\x1b[0m");
+
+            match run_conversion(&converter, path_str, &out_name) {
+                Ok(_) => {
+                    println!("  \x1b[1;34m[2/3] 正在執行內容稽核...\x1b[0m");
+                    let (v_errs, advices) = process_audit(path_str, &out_name, &temp_log, &ac, &typo_map, &patterns, &regex_rules)?;
+                    
+                    let status = if v_errs.is_empty() { ResultStatus::Success } else { ResultStatus::VerifWarning };
+                    
+                    if v_errs.is_empty() {
+                        println!("  \x1b[1;32m ✔ 轉換與格式校驗通過\x1b[0m");
+                    } else {
+                        println!("  \x1b[1;31m ✘ 格式發現 {} 處錯誤\x1b[0m", v_errs.len());
+                    }
+
+                    reports.push(FileReport {
+                        input_name: path_str.clone(),
+                        output_name: out_name,
+                        temp_log_path: temp_log,
+                        status,
+                        verif_errors: v_errs,
+                        quality_advices: advices,
+                    });
+                }
+                Err(_) => {
+                    println!("  \x1b[1;31m ✘ 讀寫失敗\x1b[0m");
+                }
             }
         }
+        print_final_summary(reports);
     }
-
-    // 8. 輸出總結
-    print_final_summary(reports.clone(), &temp_log, &current_time);
-
-    // 9. 發送 Discord
-    if wants_broadcast {
-        if let (Some(url), Some(report)) = (webhook_url, reports.get(0)) {
-            println!("📡 正在嘗試發送 Discord 報告...");
-            let (status_msg, color) = match report.status {
-                ResultStatus::Success => ("✅ 處理成功".to_string(), 3066993),
-                ResultStatus::Warning => (report.issues_summary[0].clone(), 15105570),
-                ResultStatus::Error => ("❌ 處理出錯".to_string(), 15158332),
-            };
-            utils::send_discord_report(&url, &report.input_name, &status_msg, color);
-            // 短暫等待確保發送成功
-            std::thread::sleep(std::time::Duration::from_millis(500));
-        }
-    }
-
     Ok(())
 }
 
-fn load_typo_engine(_log_path: &PathBuf) -> (AhoCorasick, HashMap<String, String>, Vec<String>, Vec<(Regex, String)>) {
-    let typo_path = "/home/lee/BOok/PJct/cw/typos.json";
-    let data: TypoData = fs::read_to_string(typo_path)
+fn load_typo_engine() -> (AhoCorasick, HashMap<String, String>, Vec<String>, Vec<(Regex, String)>) {
+    let mut json_path = env::current_exe().expect("無法獲取路徑");
+    json_path.pop();
+    json_path.push("typos.json");
+
+    let default_json = r#"{"typos": {"比列": "比例"}, "regex": {}}"#;
+    let data: TypoData = fs::read_to_string(&json_path)
         .map(|s| serde_json::from_str(&s).unwrap())
-        .unwrap_or_else(|_| TypoData { typos: HashMap::new(), regex_overrides: HashMap::new() });
+        .unwrap_or_else(|_| serde_json::from_str(default_json).unwrap());
 
     let patterns: Vec<String> = data.typos.keys().cloned().collect();
     let ac = AhoCorasick::new(&patterns).unwrap();
-    let regex_rules = data.regex_overrides.into_iter()
-        .filter_map(|(k, v)| Regex::new(&k).ok().map(|re| (re, v)))
-        .collect();
+
+    let mut regex_rules = Vec::new();
+    for (re_str, tip) in &data.regex {
+        if let Ok(re) = Regex::new(re_str) {
+            regex_rules.push((re, tip.clone()));
+        }
+    }
 
     (ac, data.typos, patterns, regex_rules)
 }
 
-fn print_final_summary(reports: Vec<FileReport>, _log: &PathBuf, time: &str) {
-    println!("\n\x1b[1;36m━━━━━━━━━━━━━━━━ 總結報告 ({}) ━━━━━━━━━━━━━━━━\x1b[0m", time);
-    for r in reports {
-        let (icon, color) = match r.status {
-            ResultStatus::Success => ("✓ 合格", "32"),
-            ResultStatus::Warning => ("⚠ 警告", "33"),
-            ResultStatus::Error   => ("✗ 失敗", "31"),
-        };
-        println!(" \x1b[{}m[{}] {}\x1b[0m", color, icon, r.input_name);
+fn run_conversion(converter: &OpenCC, input: &str, output: &str) -> io::Result<()> {
+    let reader = BufReader::new(File::open(input)?);
+    let mut writer = File::create(output)?;
+    for line in reader.lines() {
+        let l = line?;
+        if is_srt_structure(&l) { writeln!(writer, "{}", l)?; }
+        else { writeln!(writer, "{}", converter.convert(&l))?; }
     }
+    Ok(())
+}
+
+fn run_comparison_live(path_a: &str, path_b: &str, ac: &AhoCorasick, typo_map: &HashMap<String, String>, patterns: &[String], regex_rules: &[(Regex, String)]) -> io::Result<()> {
+    let temp_log = env::temp_dir().join("manual_compare.log");
+    let (v_errs, advices) = process_audit(path_a, path_b, &temp_log, ac, typo_map, patterns, regex_rules)?;
+    for e in v_errs { println!("\x1b[1;31m  ❌ 結構錯誤: {}\x1b[0m", e); }
+    for a in advices { println!("\x1b[1;34m  💡 內容稽核: {}\x1b[0m", a); }
+    Ok(())
+}
+
+fn print_final_summary(reports: Vec<FileReport>) {
+    let (mut s, mut w, mut f) = (0, 0, 0);
+    for r in &reports {
+        match r.status {
+            ResultStatus::Success => s += 1,
+            ResultStatus::VerifWarning => w += 1,
+            ResultStatus::ConvertError => f += 1,
+        }
+    }
+
+    let line = "=".repeat(60);
+    println!("\n\x1b[1;36m{}\x1b[0m", line);
+    println!("\x1b[1;36m📋 詳細處理清單\x1b[0m");
+    println!("\x1b[1;36m{}\x1b[0m", line);
+
+    for r in &reports {
+        match r.status {
+            ResultStatus::Success => {
+                println!("\x1b[1;32m[OK]\x1b[0m {} -> {}", r.input_name, r.output_name);
+                if !r.quality_advices.is_empty() {
+                    println!("     \x1b[1;34m└─ 內容稽核 ({} 條提示):\x1b[0m", r.quality_advices.len());
+                    for adv in r.quality_advices.iter().take(5) { println!("        • {}", adv); }
+                }
+                println!("     └─ 詳細日誌: {}", r.temp_log_path.display());
+            }
+            ResultStatus::VerifWarning => {
+                println!("\x1b[1;33m[⚠]\x1b[0m {}", r.input_name);
+                if !r.verif_errors.is_empty() {
+                    println!("     \x1b[1;31m└─ 格式錯誤: {:?}\x1b[0m", r.verif_errors);
+                }
+                if !r.quality_advices.is_empty() {
+                    println!("     \x1b[1;34m└─ 內容稽核 ({} 條提示):\x1b[0m", r.quality_advices.len());
+                    for adv in r.quality_advices.iter() { println!("        • {}", adv); }
+                }
+                println!("     └─ 詳細日誌: {}", r.temp_log_path.display());
+            }
+            ResultStatus::ConvertError => {
+                println!("\x1b[1;31m[✘]\x1b[0m {} (失敗)", r.input_name);
+            }
+        }
+    }
+
+    println!("\x1b[1;36m{}\x1b[0m", line);
+    println!("\x1b[1;36m🎯 任務總結報表\x1b[0m");
+    println!("總數: {} | \x1b[1;32m通過: {}\x1b[0m | \x1b[1;33m警告: {}\x1b[0m | \x1b[1;31m失敗: {}\x1b[0m", reports.len(), s, w, f);
+    if f == 0 && !reports.is_empty() {
+        println!("\x1b[1;32m✨ 所有檔案均已處理完成且校驗通過\x1b[0m");
+    }
+    println!("\x1b[1;36m{}\x1b[0m\n", line);
 }
