@@ -8,28 +8,26 @@ const RED: &str = "\x1b[1;31m";
 const RESET: &str = "\x1b[0m";
 
 pub fn print_help() {
-    println!("\n{}🚀 CW 專業字幕工作站 v1.1.0{}", BLUE, RESET);
-    println!("{}", "━".repeat(UI_WIDTH));  // 添加一条分隔线
+    let version = env!("CARGO_PKG_VERSION"); // 获取当前版本号
 
-    println!(
-        "{}用法: {}cw <檔案> [-p專業模式] [-a對比模式]{}",
-        BLUE, RESET, "┃ ".repeat(2)
-    );
-    println!("{}", "━".repeat(UI_WIDTH));  // 再加一条分隔线
+    println!("\nCW 字幕翻译 纠错 工具 v{}", version);  // 动态版本号
 
-    println!("{}各項選項：{}", BLUE, RESET);
-    println!();
-    println!(
-        "  {}-p專業模式    {}啟用專業翻譯模式，根據翻譯規則處理檔案。",
-        BLUE, RESET
-    );
-    println!(
-        "  {}-a對比模式    {}啟用深度內容對比模式，顯示原文與譯文的對比。",
-        BLUE, RESET
-    );
+    // 简洁的菜单文本
+    println!("\n用法:");
+    println!("  cw <文件>                 可翻译多个文件 test1.srt -> test1.srt.txt");
+    println!("  cw -a <文件1> <文件2>     对比两个文件内容");
+    println!("  cw -p <文件1> <文件2>     开启 OpenCC 高级词汇优化模式");
+    println!("  cw -b <文件>              发射到 Discord webhook url\n");
 
-    println!("{}", "━".repeat(UI_WIDTH));  // 结尾添加分隔线
+    println!("各项选项说明:");
+    println!("  -a 对比模式      启用深度内容对比模式，显示原文与译文的对比。");
+    println!("  -p 专业模式      启用 OpenCC 高级词汇优化模式，根据翻译规则处理文件。");
+    println!("                   例如：将简体字 '软件' 转换为繁体字 '軟體'。");
+    println!("  -b Discord       通过webhook url将文件发射到 Discord 频道进行分享。\n");
 }
+
+
+
 
 pub fn print_file_header(idx: usize, total: usize, name: &str) {
     println!("\n\x1b[1;35m➔ 檔案 [{}/{}] : {}\x1b[0m", idx, total, name);
