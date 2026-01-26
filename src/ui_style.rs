@@ -1,5 +1,6 @@
 use crate::report_format::{FileReport, ResultStatus};
 use unicode_width::UnicodeWidthStr;
+use std::path::{Path, PathBuf};
 
 const UI_WIDTH: usize = 70;
 const BLUE: &str = "\x1b[1;36m";
@@ -49,12 +50,12 @@ pub fn print_translated_preview(pairs: &[(usize, String, String)]) {
         return; 
     }
     println!("  {}────────────── 翻譯對照預覽 (僅顯示變動行) ──────────────{}", "\x1b[2m", RESET);
-    for (line_num, origin, trans) in pairs.iter().take(15) {
+    for (line_num, origin, trans) in pairs.iter().take(50) {
         println!("  \x1b[2mL{:03} 原:\x1b[0m {}", line_num, origin.trim());
         println!("       \x1b[1;32m譯:\x1b[0m {}", trans.trim());
     }
-    if pairs.len() > 15 {
-        println!("  {}... 還有 {} 行變動已存入日誌檔案{}", "\x1b[2m", pairs.len() - 15, RESET);
+    if pairs.len() > 50 {
+        println!("  {}... 還有 {} 行變動已存入日誌檔案{}", "\x1b[2m", pairs.len() - 50, RESET);
     }
 }
 
@@ -82,4 +83,7 @@ pub fn print_summary(reports: &[FileReport]) {
     let s_width = UnicodeWidthStr::width(summary.as_str());
     println!("{}┃{} {} {}{}┃{}", BLUE, RESET, summary, " ".repeat(UI_WIDTH - s_width - 4), BLUE, RESET);
     println!("{}┗{}┛{}", BLUE, line_str, RESET);
+        // 输出日志绝对路径
+    let absolute_log_path = log_file_path.canonicalize().unwrap_or_else(|_| log_file_path.clone());
+    println!("\n行變動已存入日誌檔案: {}", absolute_log_path.display());
 }
