@@ -19,7 +19,7 @@ pub fn print_file_header(idx: usize, total: usize, name: &str) {
 // 供 -a 模式使用的標題
 pub fn print_compare_header(path_a: &str, path_b: &str) {
     println!("\n{}┏{}┓{}", BLUE, "━".repeat(UI_WIDTH - 2), RESET);
-    println!("{}┃ 🔍 深度內容對比校對模式 (字元級標紅) {}", BLUE, " ".repeat(28), RESET);
+    println!("{}┃ 🔍 深度內容對比校對模式 (字元級標紅) {} {}", BLUE, " ".repeat(28), RESET);
     println!("{}┣{}┫{}", BLUE, "━".repeat(UI_WIDTH - 2), RESET);
     println!("{}┃ A: {}{}", BLUE, path_a, " ".repeat(UI_WIDTH - 6 - UnicodeWidthStr::width(path_a)));
     println!("{}┃ B: {}{}", BLUE, path_b, " ".repeat(UI_WIDTH - 6 - UnicodeWidthStr::width(path_b)));
