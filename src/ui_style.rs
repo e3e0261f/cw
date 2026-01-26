@@ -9,7 +9,26 @@ const RESET: &str = "\x1b[0m";
 
 pub fn print_help() {
     println!("\n{}🚀 CW 專業字幕工作站 v1.1.0{}", BLUE, RESET);
-    println!("用法: cw <檔案> [-p專業模式] [-a對比模式]");
+    println!("{}", "━".repeat(UI_WIDTH));  // 添加一条分隔线
+
+    println!(
+        "{}用法: {}cw <檔案> [-p專業模式] [-a對比模式]{}",
+        BLUE, RESET, "┃ ".repeat(2)
+    );
+    println!("{}", "━".repeat(UI_WIDTH));  // 再加一条分隔线
+
+    println!("{}各項選項：{}", BLUE, RESET);
+    println!();
+    println!(
+        "  {}-p專業模式    {}啟用專業翻譯模式，根據翻譯規則處理檔案。",
+        BLUE, RESET
+    );
+    println!(
+        "  {}-a對比模式    {}啟用深度內容對比模式，顯示原文與譯文的對比。",
+        BLUE, RESET
+    );
+
+    println!("{}", "━".repeat(UI_WIDTH));  // 结尾添加分隔线
 }
 
 pub fn print_file_header(idx: usize, total: usize, name: &str) {
