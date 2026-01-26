@@ -84,6 +84,6 @@ pub fn print_summary(reports: &[FileReport]) {
     println!("{}┃{} {} {}{}┃{}", BLUE, RESET, summary, " ".repeat(UI_WIDTH - s_width - 4), BLUE, RESET);
     println!("{}┗{}┛{}", BLUE, line_str, RESET);
         // 输出日志绝对路径
-    let absolute_log_path = log_file_path.canonicalize().unwrap_or_else(|_| log_file_path.clone());
-    println!("\n行變動已存入日誌檔案: {}", absolute_log_path.display());
+//    let absolute_log_path = log_file_path.canonicalize().unwrap_or_else(|_| log_file_path.clone());
+//    println!("\n行變動已存入日誌檔案: {}", absolute_log_path.display());
 }
