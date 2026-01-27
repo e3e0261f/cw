@@ -1,4 +1,4 @@
-# CW - 工业级汉化辅助工具 (Production-Grade Localization Tool)
+# CW - (Production-Grade Localization Tool)
 
 #核心目标：在不触碰任何非文本结构（如 SRT 时间轴、Markdown 标记）的前提下，实现极高精准度的繁简转换与并与discord频道内发可编辑内容 和 表情互动。
 
