@@ -28,36 +28,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Linux 依赖安装 (保持不变)
+      # --- Linux 环境配置 ---
       - name: Install OpenCC (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libopencc-dev cmake g++
 
-      # Windows 依赖增强：确保有编译器环境
-      - name: Setup MSVC (Windows)
+      # --- Windows 环境配置 (核心修复) ---
+      - name: Setup MSVC & vcpkg (Windows)
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install OpenCC via vcpkg
+        if: matrix.os == 'windows-latest'
+        run: |
+          # 安装 x64 版本的 OpenCC
+          vcpkg install opencc:x64-windows
+          # 必须集成到全局，方便 cargo 探测
+          vcpkg integrate install
+        shell: bash
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      # --- 执行编译 ---
       - name: Build
+        env:
+          # 这一行是给 opencc-sys 库看的，告诉它去哪里找 vcpkg 安装的东西
+          VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
         run: cargo build --release --target ${{ matrix.target }}
 
+      # --- 产物整理与发布 ---
       - name: Prepare Artifacts
         shell: bash
         run: |
           mkdir -p output
-          # 注意：Windows 的编译产物路径可能略有不同，这里做个兼容处理
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
-          else
-            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
-          fi
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
