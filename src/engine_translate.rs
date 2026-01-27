@@ -6,39 +6,35 @@ use crate::rules_stay_raw::RawGuard;
 
 pub fn run_safe_translate(use_phrase_mode: bool, input: &str, output: &str) -> io::Result<Vec<(usize, String, String)>> {
     let config = if use_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
-    let converter = OpenCC::new(config).expect("OpenCC 啟動失敗");
+    let converter = OpenCC::new(config).expect("翻譯引擎啟動失敗");
     let guard = RawGuard::new();
     
     let reader = BufReader::new(File::open(input)?);
     let mut writer = File::create(output)?;
     let mut translated_pairs = Vec::new();
-
     let mut current_section = String::new();
 
     for (idx, line) in reader.lines().enumerate() {
         let mut l = line?;
-        let line_num = idx + 1;
         if l.starts_with('\u{feff}') { l = l.replace('\u{feff}', ""); }
+        let line_num = idx + 1;
 
-        let trimmed = l.trim();
-        if guard.section_re.is_match(trimmed) {
-            current_section = trimmed.to_string();
+        if guard.section_re.is_match(l.trim()) {
+            current_section = l.trim().to_string();
             writeln!(writer, "{}", l)?;
             continue;
         }
 
         let translated = translate_single_line(&converter, &guard, &l, &current_section);
-        
-        // 【核心邏輯】如果翻譯後的結果跟原文不同，就記錄下來準備印到螢幕
         if translated != l && !checker::is_srt_structure(&l) {
             translated_pairs.push((line_num, l.clone(), translated.clone()));
         }
-
         writeln!(writer, "{}", translated)?;
     }
     Ok(translated_pairs)
 }
 
+// 將此函式公開，方便 stdin 直接調用
 pub fn translate_single_line(conv: &OpenCC, guard: &RawGuard, line: &str, section: &str) -> String {
     if guard.is_forbidden_zone(line, section) || checker::is_srt_structure(line) {
         return line.to_string();
