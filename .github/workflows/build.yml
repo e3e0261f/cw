@@ -40,18 +40,26 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install OpenCC via vcpkg (Static)
+      # 不要用 vcpkg 全家桶，我们试试用 Chocolatey (Windows 另一个包管理器) 
+      # 它的包通常是直接装二进制，不用现编
+      - name: Install OpenCC via Choco
         if: matrix.os == 'windows-latest'
         run: |
-          # 核心修复点：使用 x64-windows-static 而不是 x64-windows
-          vcpkg install opencc:x64-windows-static
-          vcpkg integrate install
-        shell: bash
+          choco install opencc -y
+        shell: pwsh
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Build
+        env:
+          # 告诉 Rust 去哪里找刚才 choco 装好的东西
+          OPENCC_LIB_DIR: "C:\\ProgramData\\chocolatey\\lib\\opencc\\tools\\lib"
+          OPENCC_INCLUDE_DIR: "C:\\ProgramData\\chocolatey\\lib\\opencc\\tools\\include"
+        run: cargo build --release --target ${{ matrix.target }}
+
 
       # --- 执行编译 ---
       - name: Build
