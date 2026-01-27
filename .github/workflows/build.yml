@@ -9,79 +9,62 @@ permissions:
   contents: write
 
 jobs:
-  # --- 任务一：Debian 稳定版 ---
-  build-debian:
-    name: Build for Debian
-    runs-on: ubuntu-latest
-    container: debian:bookworm-slim  # 使用最稳的 Debian 12
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # 确保一个失败不会杀掉另一个
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: cw
+            asset_name: cw-linux-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: cw.exe
+            asset_name: cw-windows-x64.exe
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      # Linux 依赖安装：补全 libssl-dev 解决 OpenSSL 报错
+      - name: Install Dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          apt-get update
-          # 只装最核心的，不装乱七八糟的
-          apt-get install -y cmake g++ pkg-config libopencc-dev curl git build-essential
-          # 安装 Rust
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          sudo apt-get update
+          sudo apt-get install -y libopencc-dev libssl-dev cmake g++
 
-      - name: Build
-        run: |
-          # 走最简单的编译路径
-          . $HOME/.cargo/env
-          cargo build --release
-
-      - name: Prepare Artifact
-        run: |
-          mkdir -p output
-          cp target/release/cw output/cw-debian-x64
-
-      - name: Upload
-        uses: softprops/action-gh-release@v2
-        with:
-          files: output/cw-debian-x64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # --- 任务二：Windows 任务 ---
-  build-windows:
-    name: Build for Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup MSVC
+      # Windows 依赖增强
+      - name: Setup MSVC (Windows)
+        if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: ${{ matrix.target }}
 
       - name: Build
-        shell: pwsh
+        shell: bash
         env:
-          # 强制告诉它不要找 pkg-config，直接用你仓库里的 lib
-          OPENCC_NO_PKG_CONFIG: 1
-          OPENCC_LIB_DIRS: "${{ github.workspace }}\\deps\\clib\\lib"
-          OPENCC_INCLUDE_DIRS: "${{ github.workspace }}\\deps\\clib\\include"
+          # Windows 下强制使用你提供的静态库路径，避开 pkg-config 错误
+          OPENCC_NO_PKG_CONFIG: ${{ matrix.os == 'windows-latest' && '1' || '0' }}
+          OPENCC_LIB_DIRS: ${{ matrix.os == 'windows-latest' && format('{0}/deps/clib/lib', github.workspace) || '' }}
           OPENCC_STATIC: 1
-        run: |
-          # 不再做任何 PATH 修改，直接编译
-          cargo build --release --target x86_64-pc-windows-msvc
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Prepare Artifact
-        shell: pwsh
+      - name: Prepare Artifacts
+        shell: bash
         run: |
-          if (!(Test-Path output)) { mkdir output }
-          copy-item "target\x86_64-pc-windows-msvc\release\cw.exe" "output\cw-windows-x64.exe"
+          mkdir -p output
+          # 统一使用 target/${target}/release 路径
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
 
-      - name: Upload
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: output/cw-windows-x64.exe
+          files: output/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
