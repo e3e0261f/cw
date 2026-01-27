@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+# 加上这段代码，允许 Action 创建 Release 和上传文件
+permissions:
+  contents: write
 
 jobs:
   build:
