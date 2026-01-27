@@ -2,7 +2,8 @@
 name = "cw"
 version = "1.6.5"
 edition = "2021"
-repository = "https://github.com/e3e0261f/cw" # 加上这一行
+repository = "https://github.com/e3e0261f/cw"
+description = "一个细化功能的翻译工具"
 
 [dependencies]
 opencc-rust = "1.1.19"
