@@ -50,14 +50,9 @@ cw -b test1.srt
 查看帮助：
 cw --help
 
-```
-
-行变动已存入日志档案: /path/to/translation_log.txt
-
-✓ 翻译完成
 
 
-依赖
+##依赖
 
 opencc-rust（简繁转换）
 colored（终端彩色）
@@ -65,14 +60,14 @@ clap（命令行参数）
 unicode-width（中文宽度计算）
 其他：aho-corasick, rayon, regex 等
 
-构建要求
+##构建要求
 Rust 1.60+，Cargo
 
-贡献
+#贡献
 欢迎 PR / Issue！
 如果你在使用中发现 bug 或有功能建议，直接开 issue 告诉我。
 
-许可证
+#许可证
 MIT License
 Made with ❤️ in Rust
 
