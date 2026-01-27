@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-# 加上这段代码，允许 Action 创建 Release 和上传文件
+
 permissions:
   contents: write
 
@@ -28,12 +28,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 关键：为 Linux 安装 OpenCC 环境
+      # Linux 依赖安装 (保持不变)
       - name: Install OpenCC (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libopencc-dev cmake g++
+
+      # Windows 依赖增强：确保有编译器环境
+      - name: Setup MSVC (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -43,12 +48,16 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      # 整理文件，准备上传
       - name: Prepare Artifacts
         shell: bash
         run: |
           mkdir -p output
-          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
+          # 注意：Windows 的编译产物路径可能略有不同，这里做个兼容处理
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
+          else
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
+          fi
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
