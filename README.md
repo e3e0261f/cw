@@ -35,22 +35,6 @@ cargo run -- test1.srt
 ```bash
 cw test1.srt
 ```
-# 输出 → test1.srt.txt（翻译结果）
-
-常用选项：
-# 专业优化模式（OpenCC 高级词汇处理）
-cw -p test1.srt
-
-# 深度对比模式（显示原文 vs 译文差异）
-cw -a test1.srt test2.srt
-
-# 发送结果到 Discord
-cw -b test1.srt
-
-查看帮助：
-cw --help
-
-
 
 ##依赖
 
@@ -63,12 +47,10 @@ unicode-width（中文宽度计算）
 ##构建要求
 Rust 1.60+，Cargo
 
-#贡献
+##贡献
 欢迎 PR / Issue！
 如果你在使用中发现 bug 或有功能建议，直接开 issue 告诉我。
 
-#许可证
+##许可证
 MIT License
 Made with ❤️ in Rust
-
-
