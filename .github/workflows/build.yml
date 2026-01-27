@@ -9,68 +9,74 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build for ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            image: debian:trixie
-            artifact_name: cw
-            asset_name: cw-debian13-x64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: cw.exe
-            asset_name: cw-windows-x64.exe
-
-    # 只有 Linux 任务才使用 Debian 13 容器
-    container: ${{ matrix.image }}
-
+  # --- 任务一：专门处理 Debian 13 ---
+  build-debian:
+    name: Build for Debian 13
+    runs-on: ubuntu-latest
+    container: debian:trixie  # 直接在这里指定容器，不影响 Windows
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # --- Debian 13 环境配置 ---
-      - name: Install Dependencies (Debian 13)
-        if: contains(matrix.image, 'debian')
+      - name: Install Dependencies
         run: |
           apt-get update
-          apt-get install -y cmake g++ pkg-config libopencc-dev curl git build-essential
-          # 安装 Rust 运行环境
+          apt-get install -y cmake g++ pkg-config libopencc-dev curl git build-essential strip
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      # --- Windows 环境配置 ---
-      - name: Setup MSVC (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build
+        run: |
+          export OPENCC_STATIC=1
+          cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Prepare Artifact
+        run: |
+          mkdir -p output
+          BINARY="target/x86_64-unknown-linux-gnu/release/cw"
+          strip "$BINARY"
+          # 在这里重命名为你想要的名字
+          cp "$BINARY" output/cw-debian13-x64
+
+      - name: Upload
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output/cw-debian13-x64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # --- 任务二：专门处理 Windows ---
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-latest
+    # 给 Windows 足够的时间，不被 Linux 失败连累
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build Binary
-        shell: bash
-        run: |
-          # 告诉编译脚本优先尝试静态链接
-          export OPENCC_STATIC=1
-          cargo build --release --target ${{ matrix.target }}
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-      # --- 单文件优化处理 ---
-      - name: Prepare Artifacts
+      - name: Build
+        # 使用你之前找回来的 deps/clib/lib
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Prepare Artifact
         shell: bash
         run: |
           mkdir -p output
-          STRIPPED_FILE="target/${{ matrix.target }}/release/${{ matrix.artifact_name }}"
-          
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            # 移除调试符号，显著减小 Linux 二进制体积
-            strip "$STRIPPED_FILE"
-          fi
-          
-          cp "$STRIPPED_FILE" output/${{ matrix.asset_name }}
+          # Windows 下我们也改个整洁的名字
+          cp target/x86_64-pc-windows-msvc/release/cw.exe output/cw-windows-x64.exe
 
-      - name: Upload to Release
+      - name: Upload
         uses: softprops/action-gh-release@v2
         with:
-          files: output/*
+          files: output/cw-windows-x64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
