@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  # --- 任务一：Linux 编译 (使用 Debian 12 容器确保最高兼容性) ---
+  # --- Linux 任务 ---
   build-linux:
     name: Build for Linux
     runs-on: ubuntu-latest
@@ -21,7 +21,6 @@ jobs:
       - name: Install Dependencies
         run: |
           apt-get update
-          # 核心：补齐 libssl-dev 解决 OpenSSL 报错，补齐 libopencc-dev 解决 OpenCC
           apt-get install -y cmake g++ pkg-config libopencc-dev libssl-dev curl git build-essential
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -31,19 +30,22 @@ jobs:
           . $HOME/.cargo/env
           cargo build --release
 
-      - name: Prepare Artifact
+      - name: Package Linux
         run: |
-          mkdir -p output
-          cp target/release/cw output/cw-linux-x64
+          mkdir -p release_linux/share
+          cp target/release/cw release_linux/
+          # 拷贝词典文件夹到正确位置
+          cp -r deps/clib/share/opencc release_linux/share/
+          tar -czvf cw-linux-x64.tar.gz -C release_linux .
 
       - name: Upload
         uses: softprops/action-gh-release@v2
         with:
-          files: output/cw-linux-x64
+          files: cw-linux-x64.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # --- 任务二：Windows 编译 (使用原生 MSVC) ---
+  # --- Windows 任务 ---
   build-windows:
     name: Build for Windows
     runs-on: windows-latest
@@ -62,23 +64,26 @@ jobs:
       - name: Build
         shell: pwsh
         env:
-          # 核心：跳过 pkg-config，直接链接你提供的 .lib 文件
           OPENCC_NO_PKG_CONFIG: 1
           OPENCC_LIB_DIRS: "${{ github.workspace }}\\deps\\clib\\lib"
           OPENCC_INCLUDE_DIRS: "${{ github.workspace }}\\deps\\clib\\include"
           OPENCC_STATIC: 1
-        run: |
-          cargo build --release --target x86_64-pc-windows-msvc
+        run: cargo build --release --target x86_64-pc-windows-msvc
 
-      - name: Prepare Artifact
+      - name: Package Windows
         shell: pwsh
         run: |
-          if (!(Test-Path output)) { mkdir output }
-          copy-item "target\x86_64-pc-windows-msvc\release\cw.exe" "output\cw-windows-x64.exe"
+          # 创建符合 OpenCC 预期的目录结构
+          mkdir release_win\share\opencc
+          copy-item "target\x86_64-pc-windows-msvc\release\cw.exe" "release_win\cw.exe"
+          # 递归拷贝所有词典文件
+          copy-item -Recurse "deps\clib\share\opencc\*" "release_win\share\opencc\"
+          # 压缩
+          Compress-Archive -Path release_win\* -DestinationPath cw-windows-x64.zip
 
       - name: Upload
         uses: softprops/action-gh-release@v2
         with:
-          files: output/cw-windows-x64.exe
+          files: cw-windows-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
