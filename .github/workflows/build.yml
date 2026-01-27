@@ -10,68 +10,63 @@ permissions:
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }}
+    name: Build for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            image: debian:trixie
             artifact_name: cw
-            asset_name: cw-linux-x64
+            asset_name: cw-debian13-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: cw.exe
             asset_name: cw-windows-x64.exe
 
+    # 只有 Linux 任务才使用 Debian 13 容器
+    container: ${{ matrix.image }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # --- Linux 环境配置 ---
-      - name: Install OpenCC (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      # --- Debian 13 环境配置 ---
+      - name: Install Dependencies (Debian 13)
+        if: contains(matrix.image, 'debian')
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libopencc-dev cmake g++
+          apt-get update
+          apt-get install -y cmake g++ pkg-config libopencc-dev curl git build-essential
+          # 安装 Rust 运行环境
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       # --- Windows 环境配置 ---
       - name: Setup MSVC (Windows)
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - name: Build Binary
+        shell: bash
+        run: |
+          # 告诉编译脚本优先尝试静态链接
+          export OPENCC_STATIC=1
+          cargo build --release --target ${{ matrix.target }}
 
-      - name: Build
-        # 不需要额外的环境变量，build.rs 会搞定一切
-        run: cargo build --release --target ${{ matrix.target }}
-
+      # --- 单文件优化处理 ---
       - name: Prepare Artifacts
         shell: bash
         run: |
           mkdir -p output
-          cp target/${{ matrix.target }}/release/cw.exe output/cw-windows-x64.exe
-
-
-      # --- 执行编译 ---
-      - name: Build
-        if: matrix.os == 'windows-latest'
-        env:
-          # 强制 opencc-sys 查找静态库
-          VCPKG_ROOT: ${{ env.VCPKG_INSTALLATION_ROOT }}
-          OPENCC_STATIC: 1
-        run: cargo build --release --target ${{ matrix.target }}
-
-
-      # --- 产物整理与发布 ---
-      - name: Prepare Artifacts
-        shell: bash
-        run: |
-          mkdir -p output
-          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} output/${{ matrix.asset_name }}
+          STRIPPED_FILE="target/${{ matrix.target }}/release/${{ matrix.artifact_name }}"
+          
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            # 移除调试符号，显著减小 Linux 二进制体积
+            strip "$STRIPPED_FILE"
+          fi
+          
+          cp "$STRIPPED_FILE" output/${{ matrix.asset_name }}
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
