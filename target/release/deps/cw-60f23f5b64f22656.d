@@ -10,5 +10,3 @@ src/engine_translate.rs:
 src/checker.rs:
 src/setup_config.rs:
 src/mode_a_compare.rs:
-
-# env-dep:CARGO_PKG_VERSION=1.2.0
