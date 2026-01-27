@@ -58,22 +58,26 @@ jobs:
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Fix Linker Path
+        shell: bash
+        run: |
+          # 核心修复：从 PATH 中移除 Git 的 usr/bin 目录，防止错误的 link.exe 干扰
+          # 同时确保 MSVC 的路径在最前面
+          echo "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.40.33810/bin/Hostx64/x64" >> $GITHUB_PATH
+          # 也可以简单地删除干扰路径
+          sed -i 's|/usr/bin:||g' <<< "$PATH"
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
       - name: Build
-        shell: bash
+        shell: pwsh # 切换到 PowerShell 避开 bash 的 PATH 自动转换问题
         env:
-          # 关键 1: 告诉它不要使用 pkg-config
           OPENCC_NO_PKG_CONFIG: 1
-          # 关键 2: 告诉它库文件所在的目录 (请确保这是你 deps 文件夹的真实路径)
-          # 注意：Windows 路径在 bash 脚本里建议使用正斜杠或双反斜杠
-          OPENCC_LIB_DIRS: ${{ github.workspace }}/deps/clib/lib
-          # 关键 3: 告诉它头文件在哪里 (虽然通常链接不需要，但有的 build.rs 会检查)
-          OPENCC_INCLUDE_DIRS: ${{ github.workspace }}/deps/clib/include
-          # 关键 4: 强制静态链接
+          OPENCC_LIB_DIRS: "${{ github.workspace }}/deps/clib/lib"
+          OPENCC_INCLUDE_DIRS: "${{ github.workspace }}/deps/clib/include"
           OPENCC_STATIC: 1
         run: cargo build --release --target x86_64-pc-windows-msvc
 
