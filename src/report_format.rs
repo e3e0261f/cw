@@ -1,14 +1,13 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
-#[derive(PartialEq)]
-#[allow(dead_code)]
+#[derive(PartialEq, Debug)]
 pub enum ResultStatus {
     Success,
     VerifWarning,
     ConvertError,
 }
 
-#[allow(dead_code)]
 pub struct FileReport {
     pub input_name: String,
     pub output_name: String,
@@ -16,4 +15,5 @@ pub struct FileReport {
     pub status: ResultStatus,
     pub verif_errors: Vec<String>,
     pub translated_pairs: Vec<(usize, String, String)>,
+    pub duration: Duration,
 }
