@@ -10,8 +10,8 @@ pub struct Config {
     pub log_directory: String,
     pub log_file_prefix: String,
     pub log_level: String,
-    pub log_max_size_mb: u64,    // 新增：最大 MB
-    pub log_backup_count: u32,   // 新增：保留份數
+    pub log_max_size_mb: u64,
+    pub log_backup_count: u32,
 }
 
 impl Config {
@@ -32,7 +32,6 @@ impl Config {
             }
         }
 
-        // 解析 "10MB" -> 10
         let max_size_raw = map.get("log_max_size").cloned().unwrap_or_else(|| "10".to_string());
         let max_size_mb = max_size_raw.replace("MB", "").trim().parse().unwrap_or(10);
 

@@ -1,6 +1,6 @@
 [package]
 name = "cw"
-version = "1.5.2"
+version = "1.6.1"
 edition = "2024"
 
 [dependencies]
@@ -14,3 +14,4 @@ regex = "1.12.2"
 reqwest = { version = "0.13.1", features = ["json", "blocking"] }
 unicode-width = "0.2.2"
 similar = "2.7.0"
+atty = "0.2.14"
