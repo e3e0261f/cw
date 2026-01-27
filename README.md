@@ -23,13 +23,18 @@
 git clone https://github.com/e3e0261f/cw.git
 cd cw
 cargo install --path .
+```
 
 或者直接使用 cargo run：
+```bash
 cargo run -- test1.srt
+```
 
 使用方式
 基本用法（翻译单个文件）：
+```bash
 cw test1.srt
+```
 # 输出 → test1.srt.txt（翻译结果）
 
 常用选项：
