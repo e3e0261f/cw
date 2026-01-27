@@ -305,4 +305,3 @@ jobs:
           submodules: false
           fetch-depth: 0
           persist-credentials: false
-          submodules: recursive
