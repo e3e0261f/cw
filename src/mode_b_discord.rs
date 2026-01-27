@@ -11,14 +11,14 @@ pub fn execute(
     let client = Client::new();
 
     // 1. 組裝文字訊息 (支援 Discord 的 <@ID> 語法)
-    let mut content = format!("🔔 **任務提醒**：<@{}>\n", mention_id);
+    let mut content = format!("🔔 <@{}>\n", mention_id);
     content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     if let Some(text) = intro_text {
         content.push_str(text);
         content.push_str("\n");
     }
     content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    content.push_str("✅ 翻譯任務已由 CW 自動化流程處理完畢。");
+    // content.push_str("✅ 翻譯任務已由 CW 自動化流程處理完畢。");
 
     // 2. 準備 Multipart 表單
     let mut form = multipart::Form::new().text("content", content);
