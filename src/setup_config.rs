@@ -4,6 +4,12 @@ use std::env;
 
 pub struct Config {
     pub discord_webhook: String,
+    pub phrase_mode: bool,
+    pub verbosity: u32,
+    pub auto_discord: bool,
+    pub log_directory: String,
+    pub log_file_prefix: String,
+    pub log_level: String,
 }
 
 impl Config {
@@ -15,16 +21,23 @@ impl Config {
 
         if let Ok(content) = fs::read_to_string(cfg_path) {
             for line in content.lines() {
-                let line = line.trim();
-                if line.starts_with('#') || line.is_empty() { continue; }
-                if let Some((key, value)) = line.split_once('=') {
-                    map.insert(key.trim().to_string(), value.trim().to_string());
+                let line_clean = line.split('#').next().unwrap_or("").trim();
+                if line_clean.is_empty() { continue; }
+                if let Some((key, value)) = line_clean.split_once('=') {
+                    let clean_value = value.trim().trim_matches('"').to_string();
+                    map.insert(key.trim().to_string(), clean_value);
                 }
             }
         }
 
         Self {
             discord_webhook: map.get("discord_webhook").cloned().unwrap_or_default(),
+            phrase_mode: map.get("phrase_mode").map(|v| v == "true").unwrap_or(false),
+            verbosity: map.get("verbosity").and_then(|v| v.parse().ok()).unwrap_or(1),
+            auto_discord: map.get("auto_discord").map(|v| v == "true").unwrap_or(false),
+            log_directory: map.get("log_directory").cloned().unwrap_or_else(|| "/tmp".to_string()),
+            log_file_prefix: map.get("log_file_prefix").cloned().unwrap_or_else(|| "cw".to_string()),
+            log_level: map.get("log_level").cloned().unwrap_or_else(|| "INFO".to_string()),
         }
     }
 }

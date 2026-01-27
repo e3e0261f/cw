@@ -8,7 +8,7 @@ pub enum ResultStatus {
     ConvertError,
 }
 
-#[allow(dead_code)] // 這裡保護整個結構體，確保數據欄位不報警告
+#[allow(dead_code)]
 pub struct FileReport {
     pub input_name: String,
     pub output_name: String,
