@@ -63,7 +63,7 @@ fn main() -> std::io::Result<()> {
             let out_name = format!("{}.txt", path_str);
             let stem = Path::new(path_str).file_stem().unwrap_or_default().to_str().unwrap_or("log");
             let log_file_name = format!("{}_{}.log", config.log_file_prefix, stem);
-            let abs_temp_log = abs_log_dir.join(log_file_name);
+            let abs_temp_log = std::path::Path::new(&config.log_directory).join(log_file_name);
             
             match engine_translate::run_safe_translate(is_phrase_mode, path_str, &out_name) {
                 Ok(pairs) => {
@@ -72,8 +72,11 @@ fn main() -> std::io::Result<()> {
                     let errors = checker::check_integrity(&out_name);
                     let status = if errors.is_empty() { ResultStatus::Success } else { ResultStatus::VerifWarning };
                     
-                    // 生成日誌
-                    let _ = audit::create_detailed_log(path_str, &out_name, &abs_temp_log, &status);
+                    // 生成日誌 (追加模式)
+                    let _ = audit::create_detailed_log(
+                        path_str, &out_name, &abs_temp_log, &status, 
+                        config.log_max_size_mb, config.log_backup_count
+                    );
                     
                     let duration = file_start.elapsed();
                     let log_hint = ui_style::format_abs_path_link(&abs_temp_log);
@@ -85,11 +88,16 @@ fn main() -> std::io::Result<()> {
                     });
                 }
                 Err(e) => {
+                    // 【核心修正】：實質使用 ConvertError 欄位
                     ui_style::print_check_err(&format!("失敗: {}", e));
                     reports.push(FileReport {
-                        input_name: path_str.clone(), output_name: "".to_string(), temp_log_path: PathBuf::new(),
-                        status: ResultStatus::ConvertError, verif_errors: vec![e.to_string()],
-                        translated_pairs: vec![], duration: std::time::Duration::from_secs(0),
+                        input_name: path_str.clone(),
+                        output_name: "N/A".to_string(),
+                        temp_log_path: std::path::PathBuf::new(),
+                        status: ResultStatus::ConvertError, // 這裡正式激活了！
+                        verif_errors: vec![e.to_string()],
+                        translated_pairs: vec![],
+                        duration: std::time::Duration::from_secs(0),
                     });
                 }
             }

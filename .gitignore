@@ -1,0 +1,14 @@
+# Rust 編譯產物
+/target
+Cargo.lock
+
+# 日誌檔案
+*.log
+/tmp
+
+# 作業系統臨時檔
+.DS_Store
+Thumbs.db
+
+# 執行檔
+cw
