@@ -13,8 +13,8 @@
 - SRT 格式对空格、数字、箭头 (-->) 和换行极其敏感。普通的翻译工具（如网页翻译）经常会把时间轴数字翻错，或者把 --> 换成中文箭头。
 
 ### 下載地址
-* **Linux 版本**: [點此下載最新版 (tar.gz)](https://github.com/你的用戶名/你的倉庫名/releases/latest/download/cw-linux-x64.tar.gz)
-* **Windows 版本**: [點此下載最新版 (zip)](https://github.com/你的用戶名/你的倉庫名/releases/latest/download/cw-windows-x64.zip)
+* **Linux 版本**: [點此下載最新版 (tar.gz)](https://github.com/e3e0261f/cw/releases/latest/download/cw-linux-x64.tar.gz)
+* **Windows 版本**: [點此下載最新版 (zip)](https://github.com/e3e0261f/cw/releases/latest/download/cw-windows-x64.zip)
 
 ## 構建安裝
 
