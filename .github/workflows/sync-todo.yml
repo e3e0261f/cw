@@ -1,0 +1,28 @@
+name: Sync TODO to README
+
+on:
+  push:
+    branches: [ main ]  # 當你 push 到 main 分支時觸發
+    paths:
+      - 'TODO.md'       # 只有當 TODO.md 有改動時才跑，省資源
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 執行 Makefile 同步
+        run: make sync
+
+      - name: 檢查是否有變動並提交
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md TODO.md
+          # 如果沒有變動，git commit 會報錯，所以加個 || exit 0
+          git commit -m "chore: 自動更新 README 進度與日期 [skip ci]" || exit 0
+          git push
