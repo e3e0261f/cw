@@ -9,13 +9,14 @@
 ### 🌟 未來遠景
 - [ ] 與 Discord Bot 對接
 - [ ] 自動偵測檔案編碼 (GBK/UTF-8)
+- [ ] MEGA Auto Download cn srt
 
 ### 🛠 待修復的小問題 (精力恢復後再動手)
-- [ ] 檔名生成的路徑邏輯優化
-- [ ] 配置文件路徑在不同目錄下的穩定性
-- [ ] Discord 傳送模組的附件大小限制檢查
-- [ ] log path fix
-- [ ] err left print
+- [x] 檔名生成的路徑邏輯優化
+- [x] 配置文件路徑在不同目錄下的穩定性
+- [x] Discord 傳送模組的附件大小限制檢查
+- [x] log path fix
+- [x] err left print
 - [ ] $ the space
 - [ ] SRT 修復:檢查原檔結尾是否有換行符號
 - [x] 缩进错乱
