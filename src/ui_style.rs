@@ -1,7 +1,6 @@
 use crate::report_format::{FileReport, ResultStatus};
 use similar::{ChangeTag, TextDiff};
 
-const UI_WIDTH: usize = 70;
 const BLUE: &str = "\x1b[1;36m";
 const GREEN: &str = "\x1b[1;32m";
 const RED: &str = "\x1b[1;31m";
