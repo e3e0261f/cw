@@ -14,7 +14,7 @@
 
 ## 安装
 
-##构建要求
+构建要求
 - Rust 1.60+，Cargo
 
 ```bash
@@ -35,7 +35,7 @@ cargo run -- test1.srt
 cw test1.srt
 ```
 
-##依赖
+## 依赖
 
 - opencc-rust（简繁转换）
 - colored（终端彩色）
@@ -43,7 +43,7 @@ cw test1.srt
 - unicode-width（中文宽度计算）
 - 其他：aho-corasick, rayon, regex 等
 
-##TODO
+## TODO
 - 未來的-b操作流程可能是這樣：
 無感流程：你現在只需下一個指令：
 電腦就會自動：下載 -> 翻譯 -> 稽核 -> 發送。這就是你說的「工作站」。
@@ -53,10 +53,10 @@ cw --task "MEGA_URL" --text "這是今天的疫苗報告" -b
 - 对命令行的标准输入 直接翻译
 - 智慧篩選：它會幫你從 Mega 連結的一堆檔案裡，自動揪出那個帶有 cn 的字幕，這省去了人工挑選的麻煩。
 
-##贡献
+## 贡献
 - 欢迎 PR / Issue！
 - 如果你在使用中发现 bug 或有功能建议，直接开 issue 告诉我。
 
-##许可证
+## 许可证
 - MIT License
 - Made with ❤️ in Rust
