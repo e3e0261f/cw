@@ -20,22 +20,51 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
 
     let lines_a: Vec<String> = file_a.lines().map(|l| l.unwrap_or_default().replace('\u{feff}', "")).collect();
     let lines_b: Vec<String> = file_b.lines().map(|l| l.unwrap_or_default().replace('\u{feff}', "")).collect();
+    
+    let max_lines = std::cmp::max(lines_a.len(), lines_b.len());
     let mut current_section = String::new();
 
-    for i in 0..std::cmp::max(lines_a.len(), lines_b.len()) {
-        let a = lines_a.get(i).cloned().unwrap_or_default();
-        let b = lines_b.get(i).cloned().unwrap_or_default();
-        if a.trim().starts_with('[') { current_section = a.trim().to_string(); }
-        let expected = translate_single_line(&converter, &guard, &a, &current_section);
+    for i in 0..max_lines {
+        let opt_a = lines_a.get(i);
+        let opt_b = lines_b.get(i);
+        let line_num = i + 1;
 
-        if b == expected {
-            println!("{:>4} │ \x1b[1;32m[ OK  ]\x1b[0m │ \x1b[2m{:<width$} │ {:<width$}\x1b[0m", i+1, truncate(&a, COL_WIDTH), truncate(&b, COL_WIDTH), width = COL_WIDTH);
-        } else {
-            print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", i+1);
-            print_github_diff(&expected, &b);
-            println!();
+        match (opt_a, opt_b) {
+            (Some(a), Some(b)) => {
+                if a.trim().starts_with('[') { current_section = a.trim().to_string(); }
+                let expected = translate_single_line(&converter, &guard, a, &current_section);
+                
+                if b == &expected {
+                    println!("{:>4} │ \x1b[1;32m[ OK  ]\x1b[0m │ \x1b[2m{:<width$} │ {:<width$}\x1b[0m", 
+                             line_num, truncate(a, COL_WIDTH), truncate(b, COL_WIDTH), width = COL_WIDTH);
+                } else {
+                    print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", line_num);
+                    print_github_diff(&expected, b);
+                    println!();
+                }
+            },
+            (Some(a), None) => {
+                // 【優化處】：原檔有內容，成果檔沒了（通常是少了最後的空行）
+                print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", line_num);
+                print!("{}", truncate(a, COL_WIDTH)); // 左邊印出原檔有的內容
+                print!(" │ ");
+                // 右邊用純紅字（不帶紅底）印出提示
+                print!("\x1b[1;31m{}\x1b[0m", truncate("(( 缺少尾部空行 srt格式错误 ))", COL_WIDTH));
+                println!();
+            },
+            (None, Some(b)) => {
+                // 【優化處】：成果檔多了內容
+                print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", line_num);
+                // 左邊用純紅字印出提示
+                print!("\x1b[1;31m{}\x1b[0m", truncate("(( 缺少尾部空行 srt格式错误 ))", COL_WIDTH));
+                print!(" │ ");
+                print!("{}", truncate(b, COL_WIDTH)); // 右邊印出多出來的內容
+                println!();
+            },
+            (None, None) => break,
         }
     }
+    println!("{}", "━".repeat(115));
 }
 
 fn print_github_diff(expected: &str, actual: &str) {
@@ -46,7 +75,7 @@ fn print_github_diff(expected: &str, actual: &str) {
             let v = change.value();
             let disp = if v == " " { "·" } else { v };
             let cw = UnicodeWidthStr::width(disp);
-            if w_a + cw <= COL_WIDTH { print!("\x1b[1;32m{}\x1b[0m", disp); w_a += cw; }
+            if w_a + cw <= COL_WIDTH { print!("\x1b[1;31m{}\x1b[0m", disp); w_a += cw; } // 刪除處標紅
         } else if change.tag() == ChangeTag::Equal {
             let v = change.value();
             let cw = UnicodeWidthStr::width(v);
@@ -61,7 +90,7 @@ fn print_github_diff(expected: &str, actual: &str) {
             let v = change.value();
             let disp = if v == " " { "·" } else { v };
             let cw = UnicodeWidthStr::width(disp);
-            if w_b + cw <= COL_WIDTH { print!("\x1b[1;37;41m{}\x1b[0m", disp); w_b += cw; }
+            if w_b + cw <= COL_WIDTH { print!("\x1b[1;37;41m{}\x1b[0m", disp); w_b += cw; } // 新增/錯誤標紅底
         } else if change.tag() == ChangeTag::Equal {
             let v = change.value();
             let cw = UnicodeWidthStr::width(v);
