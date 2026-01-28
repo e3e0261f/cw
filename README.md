@@ -33,6 +33,7 @@
 - [ ] log path fix
 - [ ] err left print
 - [ ] $ the space
+- [ ] SRT 修復:檢查原檔結尾是否有換行符號
 <!-- TODO_END -->
 
 ### 下載地址

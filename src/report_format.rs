@@ -5,7 +5,7 @@ use std::time::Duration;
 pub enum ResultStatus {
     Success,
     VerifWarning,
-    ConvertError, // 轉換失敗狀態
+    ConvertError,
 }
 
 pub struct FileReport {

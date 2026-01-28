@@ -12,6 +12,7 @@ pub struct Config {
     pub log_level: String,
     pub log_max_size_mb: u64,
     pub log_backup_count: u32,
+    pub mention_id: String,
 }
 
 impl Config {
@@ -45,6 +46,7 @@ impl Config {
             log_level: map.get("log_level").cloned().unwrap_or_else(|| "INFO".to_string()),
             log_max_size_mb: max_size_mb,
             log_backup_count: map.get("log_backup_count").and_then(|v| v.parse().ok()).unwrap_or(5),
+            mention_id: map.get("mention_id").cloned().unwrap_or_default(),
         }
     }
 }

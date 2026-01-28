@@ -17,4 +17,4 @@
 - [ ] log path fix
 - [ ] err left print
 - [ ] $ the space
-- [ ] AutoUpdate
+- [ ] SRT 修復:檢查原檔結尾是否有換行符號

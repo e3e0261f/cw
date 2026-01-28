@@ -1,6 +1,6 @@
 [package]
 name = "cw"
-version = "1.6.5"
+version = "1.6.6"
 edition = "2021"
 repository = "https://github.com/e3e0261f/cw"
 description = "一个细化功能的翻译工具"
