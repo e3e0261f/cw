@@ -24,5 +24,5 @@ log:
 # 5. 清理所有測試產生的垃圾
 clean:
 	@echo "清理環境..."
-	rm -f *.txt
+	rm -f ./target/release/*.txt
 	rm -f /tmp/cw_*.log
