@@ -13,17 +13,27 @@
 ---
 </div>
 
-# 核心目標：在不觸碰任何非文字結構（如 SRT 時間軸、ASS字型、Markdown 標記）的前提下，實現極高精準度的繁簡轉換。
+<!-- TODO_START -->
+# 🚀 CW 專案進度表 (2026-01-28)
 
-- 結構保護技術：內建精密規則引擎，確保字幕時間軸、程式碼塊、專有名詞在轉換過程中完整如初。
+### 🌟 未來遠景
+- [ ] 與 Discord Bot 對接
+- [ ] 自動偵測檔案編碼 (GBK/UTF-8)
 
-- 視覺化校對流程：獨創顏色高亮對照模式，翻譯變動一目瞭然，讓二次人工校對效率提升 300%。
+### ✅ 已完成 (地基穩固)
+- [x] 多檔案模組化拆分 (main, audit, rules, ui_style, config, compare, downloader)
+- [x] 標籤保護翻譯邏輯
+- [x] GitHub 風格紅綠底色對比 (-a)
+- [x] 0 警告編譯
 
-- 團隊非同步協作：一鍵打通 Discord Webhook 交付鏈路，實現從本地處理到雲端同步的無縫銜接。
-
-- 工業級效能：由 Rust 驅動，輕鬆處理萬行級文字，拒絕崩潰與延遲。
-
-- SRT 格式对空格、数字、箭头 (-->) 和换行极其敏感。普通的翻译工具（如网页翻译）经常会把时间轴数字翻错，或者把 --> 换成中文箭头。
+### 🛠 待修復的小問題 (精力恢復後再動手)
+- [ ] 檔名生成的路徑邏輯優化
+- [ ] 配置文件路徑在不同目錄下的穩定性
+- [ ] Discord 傳送模組的附件大小限制檢查
+- [ ] log path fix
+- [ ] err left print
+- [ ] $ the space
+<!-- TODO_END -->
 
 ### 下載地址
 * **Linux 版本**: [點此下載最新版 (tar.gz)](https://github.com/e3e0261f/cw/releases/latest/download/cw-linux-x64.tar.gz)
@@ -59,28 +69,6 @@ cw test1.srt
 - unicode-width（中文寬度計算）
 - 其他：aho-corasick, rayon, regex 等
 
-## 項目進度 (TODO)
-<!-- TODO_START -->
-# 🚀 CW 專案進度表 (2026-01-28)
-
-### 🌟 未來遠景
-- [ ] 與 Discord Bot 對接
-- [ ] 自動偵測檔案編碼 (GBK/UTF-8)
-
-### ✅ 已完成 (地基穩固)
-- [x] 多檔案模組化拆分 (main, audit, rules, ui_style, config, compare, downloader)
-- [x] 標籤保護翻譯邏輯
-- [x] GitHub 風格紅綠底色對比 (-a)
-- [x] 0 警告編譯
-
-### 🛠 待修復的小問題 (精力恢復後再動手)
-- [ ] 檔名生成的路徑邏輯優化
-- [ ] 配置文件路徑在不同目錄下的穩定性
-- [ ] Discord 傳送模組的附件大小限制檢查
-- [ ] log path fix
-- [ ] err left print
-- [ ] $ the space
-<!-- TODO_END -->
 
 ## 貢獻
 - 歡迎 PR / Issue！

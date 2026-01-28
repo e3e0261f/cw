@@ -1,5 +1,5 @@
 # 預設執行：編譯、測試翻譯、測試對比、讀取日誌
-all: build translate compare log
+all: build sync translate compare
 
 # 1. 編譯（release 模式）
 build:
@@ -36,5 +36,3 @@ sync:
 	@sed -i '/<!-- TODO_START -->/r TODO.md' README.md
 	@echo "同步完成！"
 
-# 修改你原本的 build 或 test，讓它順便同步
-all: build sync translate compare
