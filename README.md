@@ -4,7 +4,7 @@
 ### 極速、精準的專業字幕繁簡轉換工具
 
 [![Rust](https://img.shields.io/badge/Built%20with-Rust-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge)](https://github.com/你的用戶名/你的倉庫名/releases)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-blue?style=for-the-badge)](https://github.com/e3e0261f/cw/releases)
 
 <p>
   基於 OpenCC 核心，為追求極致體驗的字幕組與翻譯者打造。
