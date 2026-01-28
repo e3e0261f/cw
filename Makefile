@@ -32,11 +32,8 @@ clean:
 # 同步 TODO 到 README
 TODAY = $(shell date +%Y-%m-%d)
 
+# 只保留純粹的內容拷貝，不再動日期，不再自動 commit
 sync:
-	@echo "正在自動更新日期並同步到 README...-------------------------"
-	# 更新 TODO.md 的日期
-	@sed -i "1s/🚀 CW 專案進度表 (.*/🚀 CW 專案進度表 ($(TODAY))/" TODO.md
-	# 清空 README.md 中標記間的內容並嵌入新內容
+	@echo "正在同步進度清單..."
 	@sed -i '/<!-- TODO_START -->/,/<!-- TODO_END -->/{ /<!-- TODO_START -->/b; /<!-- TODO_END -->/b; d }' README.md
 	@sed -i '/<!-- TODO_START -->/r TODO.md' README.md
-
