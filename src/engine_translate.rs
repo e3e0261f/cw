@@ -5,8 +5,26 @@ use crate::checker;
 use crate::rules_stay_raw::RawGuard;
 
 pub fn run_safe_translate(use_phrase_mode: bool, input: &str, output: &str) -> io::Result<Vec<(usize, String, String)>> {
-    let config = if use_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
-    let converter = OpenCC::new(config).expect("翻譯引擎啟動失敗");
+    let converter = {
+        #[cfg(windows)]
+        {
+            // Windows 逻辑：寻找当前 exe 所在目录下的 share/opencc
+            let exe_path = std::env::current_exe().unwrap();
+            let exe_dir = exe_path.parent().unwrap();
+            let config_filename = if use_phrase_mode { "s2twp.json" } else { "s2t.json" };
+            let config_path = exe_dir.join("share").join("opencc").join(config_filename);
+            let config_str = config_path.to_str().expect("路徑解析失敗");
+            OpenCC::new(config_str).expect("翻譯引擎啟動失敗，請檢查程序目錄下的 share 檔案夾")
+        }
+
+        #[cfg(not(windows))]
+        {
+            // Linux/其他 逻辑：维持原样，使用默认系统路径
+            let config = if use_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
+            OpenCC::new(config).expect("翻譯引擎啟動失敗，請確認系統已安裝 libopencc-dev")
+        }
+    };
+
     let guard = RawGuard::new();
     
     let reader = BufReader::new(File::open(input)?);
