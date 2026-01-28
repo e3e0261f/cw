@@ -9,10 +9,11 @@ pub struct Config {
     pub auto_discord: bool,
     pub log_directory: String,
     pub log_file_prefix: String,
-    pub log_level: String,
+    pub log_level: String, // 這裡定義了日誌等級
     pub log_max_size_mb: u64,
     pub log_backup_count: u32,
     pub mention_id: String,
+    pub discord_interval: u64,
 }
 
 impl Config {
@@ -47,6 +48,7 @@ impl Config {
             log_max_size_mb: max_size_mb,
             log_backup_count: map.get("log_backup_count").and_then(|v| v.parse().ok()).unwrap_or(5),
             mention_id: map.get("mention_id").cloned().unwrap_or_default(),
+            discord_interval: map.get("discord_interval").and_then(|v| v.parse().ok()).unwrap_or(2),
         }
     }
 }

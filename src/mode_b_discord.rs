@@ -1,55 +1,115 @@
 use reqwest::blocking::{multipart, Client};
-use std::fs;
+use std::{fs, thread, time::Duration};
+use std::path::Path;
 use crate::report_format::{FileReport, ResultStatus};
+
+const DISCORD_LIMIT: usize = 1900; // 保守限制在 1900 字
 
 pub fn execute(
     webhook_url: &str, 
     intro_text: Option<&str>, 
     mention_id: &str, 
+    interval: u64,
     reports: &[FileReport]
 ) -> Result<(), String> {
     let client = Client::new();
 
-    // 1. 組裝文字訊息 (支援 Discord 的 <@ID> 語法)
-    let mut content = format!("🔔 <@{}>\n", mention_id);
-    content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    if let Some(text) = intro_text {
-        content.push_str(text);
-        content.push_str("\n");
+    // 1. 準備完整的長文字內容
+    let mut full_content = String::new();
+    if !mention_id.is_empty() {
+        full_content.push_str(&format!("🔔 **任務提醒**：<@{}>\n", mention_id));
     }
-    content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    // content.push_str("✅ 翻譯任務已由 CW 自動化流程處理完畢。");
-
-    // 2. 準備 Multipart 表單
-    let mut form = multipart::Form::new().text("content", content);
-
-    // 3. 附加成功翻譯的檔案 (最多 10 個)
-    let mut attached_count = 0;
+    if let Some(text) = intro_text {
+        full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        full_content.push_str(text);
+        full_content.push_str("\n");
+    }
+    full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    full_content.push_str("✅ **處理清單總結**：\n");
     for r in reports {
-        if r.status == ResultStatus::Success {
-            if let Ok(file_data) = fs::read(&r.output_name) {
-                let part = multipart::Part::bytes(file_data)
-                    .file_name(r.output_name.clone());
-                form = form.part(format!("file{}", attached_count), part);
-                attached_count += 1;
+        let emoji = if r.status == ResultStatus::Success { "🔹" } else { "🔸" };
+        full_content.push_str(&format!("{} `{}` (變動: {} 行)\n", emoji, r.input_name, r.translated_pairs.len()));
+    }
+
+    // 2. 執行智慧切分
+    let chunks = split_content_safely(&full_content);
+    let total_chunks = chunks.len();
+
+    // 3. 分段發送
+    for (i, chunk) in chunks.iter().enumerate() {
+        let is_last = i == total_chunks - 1;
+        let mut form = multipart::Form::new().text("content", chunk.clone());
+
+        // 只有最後一棒才掛載附件 (最多 10 個)
+        if is_last {
+            let mut count = 0;
+            for r in reports {
+                if r.status != ResultStatus::ConvertError {
+                    let path = Path::new(&r.output_name);
+                    if path.exists() {
+                        if let Ok(data) = fs::read(path) {
+                            let name = path.file_name().unwrap().to_string_lossy().to_string();
+                            form = form.part(format!("file{}", count), multipart::Part::bytes(data).file_name(name));
+                            count += 1;
+                        }
+                    }
+                }
+                if count >= 10 { break; }
             }
         }
-        if attached_count >= 10 { break; }
+
+        // 執行 POST
+        let resp = client.post(webhook_url).multipart(form).send()
+            .map_err(|e| format!("網路連線失敗: {}", e))?;
+
+        if !resp.status().is_success() {
+            return Err(format!("Discord 拒絕 (代碼: {})", resp.status()));
+        }
+
+        // 模擬人手速間隔
+        if !is_last {
+            thread::sleep(Duration::from_secs(interval));
+        }
     }
 
-    if attached_count == 0 {
-        return Err("找不到可發送的成功檔案附件".to_string());
-    }
+    Ok(())
+}
 
-    // 4. 發送請求
-    let response = client.post(webhook_url)
-        .multipart(form)
-        .send()
-        .map_err(|e| format!("網路傳輸失敗: {}", e))?;
+/// 智慧切分：換行 > 空格 > URL 避讓
+fn split_content_safely(text: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut remaining = text;
 
-    if response.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("Discord 拒絕 (代碼: {})", response.status()))
+    while remaining.chars().count() > DISCORD_LIMIT {
+        let mut split_pos = DISCORD_LIMIT;
+        let current_chunk = remaining.chars().take(DISCORD_LIMIT).collect::<String>();
+
+        // 1. 找最後一個換行
+        if let Some(pos) = current_chunk.rfind('\n') {
+            split_pos = pos;
+        } 
+        // 2. 找最後一個空格
+        else if let Some(pos) = current_chunk.rfind(' ') {
+            split_pos = pos;
+        }
+
+        // 3. URL 避讓邏輯：檢查切割點是否正在切開 http...
+        let temp_cut = &remaining[..split_pos];
+        if let Some(url_start) = temp_cut.rfind("http") {
+            // 如果從 http 到切口之間沒有空格，說明 URL 被切斷了
+            if !remaining[url_start..split_pos].contains(' ') {
+                split_pos = url_start; // 將整段 URL 移到下一塊
+            }
+        }
+
+        // 執行切割
+        let (part, rest) = remaining.split_at(split_pos);
+        chunks.push(part.trim().to_string());
+        remaining = rest.trim();
     }
+    
+    if !remaining.is_empty() {
+        chunks.push(remaining.to_string());
+    }
+    chunks
 }

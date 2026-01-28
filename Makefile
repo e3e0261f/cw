@@ -11,10 +11,12 @@ translate:
 	@echo "正在測試翻譯功能...----------------------------------------"
 	echo "這個软件的程序數據需要優化" | cw
 	echo "這個软件的程序數據需要優化" | cw -p
+	./target/release/cw test2.srt
 # 3. 測試對比模式
 compare:
 	@echo "正在測試對比模式...----------------------------------------"
 	./target/release/cw -a test1.srt test1.srt.txt
+	./target/release/cw -a test2.srt test2.srt.txt
 
 # 4. 直接查看最新日誌
 log:
