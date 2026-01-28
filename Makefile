@@ -1,9 +1,10 @@
+VERSION = $(shell grep '^version =' Cargo.toml | cut -d '"' -f 2)
 # 預設執行：編譯、測試翻譯、測試對比、讀取日誌
 all: build sync translate compare
 
 # 1. 編譯（release 模式）
 build:
-	@echo "正在編譯...------------------------------------------------"
+	@echo "正在編譯 release 版本..."
 	cargo build --release
 
 # 2. 測試單一檔案翻譯
@@ -27,13 +28,19 @@ log:
 clean:
 	@echo "清理環境...------------------------------------------------"
 	rm -f ./target/release/*.txt
-	rm -f /tmp/cw_*.log
+#	rm -f /tmp/cw_*.log
 
 # 同步 TODO 到 README
 TODAY = $(shell date +%Y-%m-%d)
-
-# 只保留純粹的內容拷貝，不再動日期，不再自動 commit
 sync:
-	@echo "正在同步進度清單..."
+	@echo "正在同步 TODO 到 README..."
 	@sed -i '/<!-- TODO_START -->/,/<!-- TODO_END -->/{ /<!-- TODO_START -->/b; /<!-- TODO_END -->/b; d }' README.md
 	@sed -i '/<!-- TODO_START -->/r TODO.md' README.md
+
+release: build
+	@echo "準備發布版本 v$(VERSION)..."
+	git add .
+	git commit -m "Release v$(VERSION)" || echo "無變動需提交"
+	git tag -a v$(VERSION) -m "Version $(VERSION)"
+	git push origin main --tags
+	@echo "🚀 版本 v$(VERSION) 已發送至 GitHub！"

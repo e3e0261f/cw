@@ -8,7 +8,6 @@ pub struct RawGuard {
 impl RawGuard {
     pub fn new() -> Self {
         Self {
-            // 保護 \N, \h, {控制代碼}, <標籤>
             tag_re: Regex::new(r"(\\N|\\h|\{.*?\}|<.*?>)").unwrap(),
             section_re: Regex::new(r"^\[.*\]$").unwrap(),
         }
@@ -16,7 +15,7 @@ impl RawGuard {
 
     pub fn is_forbidden_zone(&self, line: &str, current_section: &str) -> bool {
         let t = line.trim();
-        if t.is_empty() || t.starts_with(';') { return true; } // 保護註釋
+        if t.is_empty() || t.starts_with(';') { return true; }
         if current_section == "[V4+ Styles]" && t.starts_with("Style:") { return true; }
         if current_section == "[Script Info]" || current_section == "[Aegisub Project Garbage]" { return true; }
         false

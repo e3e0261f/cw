@@ -3,7 +3,7 @@ use std::{fs, thread, time::Duration};
 use std::path::Path;
 use crate::report_format::{FileReport, ResultStatus};
 
-const DISCORD_LIMIT: usize = 1900; // 保守限制在 1900 字
+const DISCORD_LIMIT: usize = 1900;
 
 pub fn execute(
     webhook_url: &str, 
@@ -13,34 +13,28 @@ pub fn execute(
     reports: &[FileReport]
 ) -> Result<(), String> {
     let client = Client::new();
-
-    // 1. 準備完整的長文字內容
     let mut full_content = String::new();
-    if !mention_id.is_empty() {
-        full_content.push_str(&format!("🔔 **任務提醒**：<@{}>\n", mention_id));
-    }
+
+    if !mention_id.is_empty() { full_content.push_str(&format!("🔔 **任務提醒**：<@{}>\n", mention_id)); }
     if let Some(text) = intro_text {
         full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         full_content.push_str(text);
         full_content.push_str("\n");
     }
-    full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    full_content.push_str("✅ **處理清單總結**：\n");
+    full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ **處理清單總結**：\n");
     for r in reports {
         let emoji = if r.status == ResultStatus::Success { "🔹" } else { "🔸" };
         full_content.push_str(&format!("{} `{}` (變動: {} 行)\n", emoji, r.input_name, r.translated_pairs.len()));
     }
 
-    // 2. 執行智慧切分
     let chunks = split_content_safely(&full_content);
-    let total_chunks = chunks.len();
+    println!("\n📡 正在啟動智慧傳送車...");
+    println!("   訊息總長：{} 字元 | 預計分段：{} 段", full_content.chars().count(), chunks.len());
 
-    // 3. 分段發送
     for (i, chunk) in chunks.iter().enumerate() {
-        let is_last = i == total_chunks - 1;
+        let is_last = i == chunks.len() - 1;
         let mut form = multipart::Form::new().text("content", chunk.clone());
 
-        // 只有最後一棒才掛載附件 (最多 10 個)
         if is_last {
             let mut count = 0;
             for r in reports {
@@ -58,58 +52,39 @@ pub fn execute(
             }
         }
 
-        // 執行 POST
+        let has_url = chunk.contains("http");
+        print!("[發送中] 第 {}/{} 段 ({} 字元) {}...", i+1, chunks.len(), chunk.chars().count(), if has_url {"(帶URL)"} else {""});
+        
         let resp = client.post(webhook_url).multipart(form).send()
             .map_err(|e| format!("網路連線失敗: {}", e))?;
 
-        if !resp.status().is_success() {
-            return Err(format!("Discord 拒絕 (代碼: {})", resp.status()));
-        }
+        println!(" [HTTP {}]", resp.status().as_u16());
 
-        // 模擬人手速間隔
         if !is_last {
+            println!("   [延時] 等待 {} 秒以模擬人工手速...", interval);
             thread::sleep(Duration::from_secs(interval));
         }
     }
-
     Ok(())
 }
 
-/// 智慧切分：換行 > 空格 > URL 避讓
 fn split_content_safely(text: &str) -> Vec<String> {
     let mut chunks = Vec::new();
     let mut remaining = text;
-
     while remaining.chars().count() > DISCORD_LIMIT {
         let mut split_pos = DISCORD_LIMIT;
         let current_chunk = remaining.chars().take(DISCORD_LIMIT).collect::<String>();
-
-        // 1. 找最後一個換行
-        if let Some(pos) = current_chunk.rfind('\n') {
-            split_pos = pos;
-        } 
-        // 2. 找最後一個空格
-        else if let Some(pos) = current_chunk.rfind(' ') {
-            split_pos = pos;
-        }
-
-        // 3. URL 避讓邏輯：檢查切割點是否正在切開 http...
+        if let Some(pos) = current_chunk.rfind('\n') { split_pos = pos; } 
+        else if let Some(pos) = current_chunk.rfind(' ') { split_pos = pos; }
+        
         let temp_cut = &remaining[..split_pos];
         if let Some(url_start) = temp_cut.rfind("http") {
-            // 如果從 http 到切口之間沒有空格，說明 URL 被切斷了
-            if !remaining[url_start..split_pos].contains(' ') {
-                split_pos = url_start; // 將整段 URL 移到下一塊
-            }
+            if !remaining[url_start..split_pos].contains(' ') { split_pos = url_start; }
         }
-
-        // 執行切割
         let (part, rest) = remaining.split_at(split_pos);
         chunks.push(part.trim().to_string());
         remaining = rest.trim();
     }
-    
-    if !remaining.is_empty() {
-        chunks.push(remaining.to_string());
-    }
+    if !remaining.is_empty() { chunks.push(remaining.to_string()); }
     chunks
 }

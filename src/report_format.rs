@@ -2,15 +2,13 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(PartialEq, Debug)]
-#[allow(dead_code)]
 pub enum ResultStatus {
     Success,
     VerifWarning,
     ConvertError,
 }
 
-#[derive(Debug)]
-#[allow(dead_code)] // 【修正】：保護所有欄位不報警告
+#[allow(dead_code)]
 pub struct FileReport {
     pub input_name: String,
     pub output_name: String,

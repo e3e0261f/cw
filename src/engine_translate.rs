@@ -8,7 +8,6 @@ pub fn run_safe_translate(use_phrase_mode: bool, input: &str, output: &str, appl
     let config = if use_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
     let converter = OpenCC::new(config).expect("OpenCC 啟動失敗");
     let guard = RawGuard::new();
-    
     let reader = BufReader::new(File::open(input)?);
     let mut writer = File::create(output)?;
     let mut translated_pairs = Vec::new();
@@ -17,33 +16,23 @@ pub fn run_safe_translate(use_phrase_mode: bool, input: &str, output: &str, appl
     for (idx, line) in reader.lines().enumerate() {
         let mut l = line?;
         if l.starts_with('\u{feff}') { l = l.replace('\u{feff}', ""); }
-        let line_num = idx + 1;
-
         if guard.section_re.is_match(l.trim()) {
             current_section = l.trim().to_string();
             writeln!(writer, "{}", l)?;
             continue;
         }
-
         let translated = translate_single_line(&converter, &guard, &l, &current_section);
         if translated != l && !checker::is_srt_structure(&l) {
-            translated_pairs.push((line_num, l.clone(), translated.clone()));
+            translated_pairs.push((idx + 1, l.clone(), translated.clone()));
         }
         writeln!(writer, "{}", translated)?;
     }
-
-    // 【自動修復】：如果原檔不規範，我們只在成果檔末尾補空行
-    if apply_fix {
-        writeln!(writer)?;
-    }
-
+    if apply_fix { writeln!(writer)?; }
     Ok(translated_pairs)
 }
 
 pub fn translate_single_line(conv: &OpenCC, guard: &RawGuard, line: &str, section: &str) -> String {
-    if guard.is_forbidden_zone(line, section) || checker::is_srt_structure(line) {
-        return line.to_string();
-    }
+    if guard.is_forbidden_zone(line, section) || checker::is_srt_structure(line) { return line.to_string(); }
     if (line.starts_with("Dialogue:") || line.starts_with("Comment:")) && section == "[Events]" {
         let (meta, content) = guard.split_ass_line(line);
         return format!("{}{}", meta, translate_content(conv, guard, content));
