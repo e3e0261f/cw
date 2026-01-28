@@ -39,13 +39,6 @@
 * **Linux 版本**: [點此下載最新版 (tar.gz)](https://github.com/e3e0261f/cw/releases/latest/download/cw-linux-x64.tar.gz)
 * **Windows 版本**: [點此下載最新版 (zip)](https://github.com/e3e0261f/cw/releases/latest/download/cw-windows-x64.zip)
 
-## 項目進度
-<details>
-  <summary>點擊展開查看詳細待辦清單 (TODO.md)</summary>
-  
-  [前往完整 TODO 頁面](./TODO.md)
-</details>
-
 ## 構建安裝
 
 - Rust 1.60+，Cargo
