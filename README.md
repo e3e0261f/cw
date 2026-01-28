@@ -59,15 +59,9 @@ cw test1.srt
 - unicode-width（中文寬度計算）
 - 其他：aho-corasick, rayon, regex 等
 
-## TODO
-- 未來的 -b 無感流程：只需一個指令：會自動：下載 -> 翻譯 -> 稽核 -> 傳送。
-```Bash
-cw --task "MEGA_URL" --text "這是今天的疫苗報告" -b
-```
-- 對命令列的標準輸入 直接翻譯
-- 智慧篩選：它會幫你從 Mega 連結的一堆檔案裡，自動揪出那個帶有 cn 的字幕，這省去了人工挑選的麻煩。
-- test script
-- err print
+## 項目進度 (TODO)
+<!-- TODO_START -->
+<!-- TODO_END -->
 
 ## 貢獻
 - 歡迎 PR / Issue！
