@@ -2,12 +2,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(PartialEq, Debug)]
+#[allow(dead_code)]
 pub enum ResultStatus {
     Success,
     VerifWarning,
     ConvertError,
 }
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub struct FileReport {
     pub input_name: String,
