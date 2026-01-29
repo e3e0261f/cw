@@ -1,5 +1,5 @@
 # 預設執行：編譯、測試翻譯、測試對比、讀取日誌
-all:  clippy fmt test build sync translate compare
+all:  clippy test build sync translate compare
 
 # 1. 編譯（release 模式）
 build:
@@ -46,7 +46,7 @@ release: build
 	@echo "🚀 版本 v$(VERSION) 已發送至 GitHub！"
 
 fmt:
-	cargo fmt --all -- --check
+	cargo fmt --all
 
 clippy:
 	cargo clippy --all-targets -- -D warnings

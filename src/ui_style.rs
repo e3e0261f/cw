@@ -1,4 +1,5 @@
 use crate::report_format::{FileReport, ResultStatus};
+use colored::Colorize;
 use similar::{ChangeTag, TextDiff};
 
 const BLUE: &str = "\x1b[1;36m";
@@ -102,4 +103,28 @@ pub fn print_compare_header(path_a: &str, path_b: &str) {
     println!("{}", DIVIDER_LIGHT);
     println!("A: {}\nB: {}", path_a, path_b);
     println!("{}", DIVIDER_HEAVY);
+}
+
+pub fn status_ok(msg: &str) -> String {
+    format!("[ OK  ] {}", msg).green().to_string()
+}
+
+pub fn status_warn(msg: &str) -> String {
+    format!("[ WARN ] {}", msg).yellow().bold().to_string()
+}
+#[allow(dead_code)]
+pub fn status_err(msg: &str) -> String {
+    format!("[ ERR  ] {}", msg).red().bold().to_string()
+}
+#[allow(dead_code)]
+pub fn status_fix(msg: &str) -> String {
+    format!("[ FIX  ] {}", msg).yellow().bold().to_string() // 或用你原本的顏色
+}
+
+// 可選：報告標題
+pub fn report_title(title: &str) -> String {
+    format!("完整性檢查報告（{}）：", title)
+        .yellow()
+        .bold()
+        .to_string()
 }

@@ -1,5 +1,6 @@
 use crate::engine_translate::translate_single_line;
 use crate::rules_stay_raw::RawGuard;
+use crate::ui_style::{report_title, status_ok, status_warn};
 use opencc_rust::*;
 use similar::{ChangeTag, TextDiff};
 use std::fs::File;
@@ -48,6 +49,19 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
         "翻譯成果 (B)",
         width = COL_WIDTH
     );
+    // === 獨立檔尾空行報告區（表格上方） ===
+    println!("\n{}", report_title("檔尾空行"));
+
+    if a_has_tail {
+        println!("{}", status_ok("A 檔尾空行正常（以雙換行結尾）"));
+    } else {
+        println!(
+            "{}",
+            status_warn("A 檔尾缺少空行（SRT 規範推薦在最後一塊後加一空行）")
+        );
+    }
+
+    println!(); // 空行分隔表格
     println!("-------------------------------------------------------------------------------------------------------------");
 
     let text_lines = std::cmp::max(lines_a.len(), lines_b.len());
