@@ -1,13 +1,14 @@
 use crate::engine_translate::translate_single_line;
 use crate::rules_stay_raw::RawGuard;
-use crate::ui_style::{report_title, status_ok, status_warn};
+use crate::ui_style::{status_fail, status_info, status_warn};
+use colored::Colorize;
 use opencc_rust::*;
 use similar::{ChangeTag, TextDiff};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use unicode_width::UnicodeWidthStr;
 
-const COL_WIDTH: usize = 48;
+const COL_WIDTH: usize = 40;
 
 pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
     let mut fa = File::open(path_a).expect("找不到 A");
@@ -49,19 +50,7 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
         "翻譯成果 (B)",
         width = COL_WIDTH
     );
-    // === 獨立檔尾空行報告區（表格上方） ===
-    println!("\n{}", report_title("檔尾空行"));
 
-    if a_has_tail {
-        println!("{}", status_ok("A 檔尾空行正常（以雙換行結尾）"));
-    } else {
-        println!(
-            "{}",
-            status_warn("A 檔尾缺少空行（SRT 規範推薦在最後一塊後加一空行）")
-        );
-    }
-
-    println!(); // 空行分隔表格
     println!("-------------------------------------------------------------------------------------------------------------");
 
     let text_lines = std::cmp::max(lines_a.len(), lines_b.len());
@@ -82,73 +71,66 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
                 let expected = translate_single_line(&converter, &guard, a, &current_section);
                 if b == &expected || b == a {
                     println!(
-                        "{}{:>4} │ [ OK  ] │ {} │ {}\x1b[0m",
+                        "{}{:>4} │ {} │ {} │ {}\x1b[0m",
                         zebra,
                         line_num,
+                        status_info(),
                         format_to_width(a, COL_WIDTH),
                         format_to_width(b, COL_WIDTH)
                     );
                 } else {
-                    print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", line_num);
+                    print!("{:>4} │ \x1b[1;31m{}\x1b[0m │ ", line_num, status_fail());
                     print_github_diff(&expected, b);
                     println!();
                 }
             }
             (Some(a), None) => println!(
-                "{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ {} │ \x1b[1;31m(( 缺少此行 ))\x1b[0m",
+                "{:>4} │ \x1b[1;31m{}\x1b[0m │ {} │ \x1b[1;31m(( 缺少此行 ))\x1b[0m",
                 line_num,
+                status_fail(),
                 format_to_width(a, COL_WIDTH)
             ),
             (None, Some(b)) => println!(
-                "{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m(( 缺少此行 ))\x1b[0m │ {}",
+                "{:>4} │ \x1b[1;31m{}\x1b[0m │ \x1b[1;31m(( 缺少此行 ))\x1b[0m │ {}",
                 line_num,
+                status_fail(),
                 format_to_width(b, COL_WIDTH)
             ),
             (None, None) => break,
         }
     }
 
-    // --- 第 9 行：專屬物理邊界診斷 ---
+    // 專屬物理邊界診斷
+    // --- 檔尾空行診斷（整合到表格最後一行，美化對齊） ---
     let footer_num = text_lines + 1;
-    match (a_has_tail, b_has_tail) {
-        (true, true) => {
-            // 雙方都標準，顯示一條清爽的 OK 空行
-            println!(
-                "{:>4} │ \x1b[1;32m[ OK  ]\x1b[0m │ {:<width$} │ {:<width$}",
-                footer_num,
-                "",
-                "",
-                width = COL_WIDTH
-            );
-        }
-        (false, true) => {
-            // A 沒、B 有：這是修復成功的證明
-            println!(
-                "{:>4} │ \x1b[1;33m[ FIX ]\x1b[0m │ \x1b[1;31m{} │ \x1b[1;32m{}\x1b[0m",
-                footer_num,
-                format_to_width("缺少空行", COL_WIDTH),
-                format_to_width("系統已補全", COL_WIDTH)
-            );
-        }
-        (false, false) => {
-            // 雙方都沒：雙紅警告
-            println!(
-                "{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m{} │ \x1b[1;31m{}\x1b[0m",
-                footer_num,
-                format_to_width("缺少空行", COL_WIDTH),
-                format_to_width("缺少空行", COL_WIDTH)
-            );
-        }
-        (true, false) => {
-            // A 有、B 沒：這是嚴重的退化錯誤
-            println!(
-                "{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;32m{} │ \x1b[1;31m{}\x1b[0m",
-                footer_num,
-                format_to_width("正常", COL_WIDTH),
-                format_to_width("缺少空行", COL_WIDTH)
-            );
-        }
-    }
+
+    // A/B 細節文字（無 A: B: 前綴）
+    let a_detail = if a_has_tail {
+        "正常".green().to_string()
+    } else {
+        "缺少空行（可自動修復）".yellow().bold().to_string()
+    };
+    let b_detail = if b_has_tail {
+        "正常".green().to_string()
+    } else {
+        "缺少空行（可自動修復）".yellow().bold().to_string()
+    };
+
+    // 整體狀態標籤（固定寬度 8 字符，補空格等寬）
+    let overall_label = if a_has_tail && b_has_tail {
+        status_info()
+    } else {
+        status_warn()
+    };
+
+    // 格式化 A/B 欄（強制寬度對齊）
+    let a_formatted = format_to_width(&a_detail, COL_WIDTH);
+    let b_formatted = format_to_width(&b_detail, COL_WIDTH);
+
+    println!(
+        "{:>4} │ {} │ {} │ {}",
+        footer_num, overall_label, a_formatted, b_formatted
+    );
 
     println!("=============================================================================================================");
 }
@@ -172,22 +154,38 @@ fn check_physical_blank_line(file: &mut File) -> bool {
 }
 
 fn format_to_width(s: &str, width: usize) -> String {
-    let mut res = String::new();
-    let mut curr_w = 0;
-    for c in s.chars() {
-        let cw = UnicodeWidthStr::width(c.to_string().as_str());
-        if curr_w + cw > width {
-            if !res.is_empty() {
-                res.pop();
+    // 1. 定义清理 ANSI 颜色代码的正则（不用引入 regex 库也能手动过滤，但为了稳妥建议用正则）
+    // 如果不想引入 regex 库，可以直接操作，这里提供一个直接能跑的版本
+    let strip_ansi = |text: &str| -> String {
+        let mut result = String::new();
+        let mut skipping = false;
+        for c in text.chars() {
+            if c == '\x1b' {
+                skipping = true;
             }
-            res.push('…');
-            curr_w = width;
-            break;
+            if !skipping {
+                result.push(c);
+            }
+            if skipping && c == 'm' {
+                skipping = false;
+            }
         }
-        res.push(c);
-        curr_w += cw;
+        result
+    };
+
+    let clean_text = strip_ansi(s);
+    let visible_width = UnicodeWidthStr::width(clean_text.as_str());
+
+    // 2. 根据视觉宽度进行处理
+    if visible_width > width {
+        // 如果太长，简单截断（这里保留原始字符串 s，但截断逻辑要小心）
+        // 建议：直接返回带颜色的原始串，或者在这里做更复杂的截断
+        s.chars().take(width).collect()
+    } else {
+        // 3. 关键点：补齐的空格数 = 目标宽度 - 视觉宽度
+        let padding = width - visible_width;
+        format!("{}{}", s, " ".repeat(padding))
     }
-    res + &" ".repeat(width - curr_w)
 }
 
 fn print_github_diff(expected: &str, actual: &str) {

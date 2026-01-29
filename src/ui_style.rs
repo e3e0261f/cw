@@ -105,23 +105,27 @@ pub fn print_compare_header(path_a: &str, path_b: &str) {
     println!("{}", DIVIDER_HEAVY);
 }
 
-pub fn status_ok(msg: &str) -> String {
-    format!("[ OK  ] {}", msg).green().to_string()
+#[allow(dead_code)]
+pub fn status_warn() -> String {
+    "[ WARN ]".yellow().bold().to_string()
 }
 
-pub fn status_warn(msg: &str) -> String {
-    format!("[ WARN ] {}", msg).yellow().bold().to_string()
-}
 #[allow(dead_code)]
-pub fn status_err(msg: &str) -> String {
-    format!("[ ERR  ] {}", msg).red().bold().to_string()
-}
-#[allow(dead_code)]
-pub fn status_fix(msg: &str) -> String {
-    format!("[ FIX  ] {}", msg).yellow().bold().to_string() // 或用你原本的顏色
+pub fn status_info() -> String {
+    "[ INFO ]".green().to_string()
 }
 
-// 可選：報告標題
+#[allow(dead_code)]
+pub fn status_fail() -> String {
+    "[ FAIL ]".red().bold().to_string()
+}
+
+#[allow(dead_code)]
+pub fn status_fixd() -> String {
+    "[ FIXD ]".yellow().bold().to_string() // 或用你原本的顏色
+}
+
+#[allow(dead_code)]
 pub fn report_title(title: &str) -> String {
     format!("完整性檢查報告（{}）：", title)
         .yellow()

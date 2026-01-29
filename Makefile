@@ -1,5 +1,5 @@
 # 預設執行：編譯、測試翻譯、測試對比、讀取日誌
-all:  clippy test build sync translate compare
+all:  fmt clippy test build sync translate compare
 
 # 1. 編譯（release 模式）
 build:
