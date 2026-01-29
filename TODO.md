@@ -1,4 +1,4 @@
-# 🚀 CW 專案進度表 (2026-01-29)
+# 🚀 CW 專案進度表
 
 ### ✅ 已完成 (地基穩固)
 - [x] 多檔案模組化拆分 (main, audit, rules, ui_style, config, compare, downloader)
@@ -11,7 +11,7 @@
 - [x] log path fix
 - [x] err left print
 - [x] 缩进错乱
-- [x] add skrt
+- [x] add skrt lib 
 
 ### 🌟 未來遠景
 - [ ] 與 Discord Bot 對接
@@ -19,7 +19,7 @@
 - [ ] MEGA Auto Download cn srt
 
 ### 🛠 待修復的小問題 (精力恢復後再動手)
-- [ ] 原始srt文件缺少尾部空行 进行报错 翻译后修复
-- [ ] -b 推送信息中 夹杂错误修正建议
+- [x] 原始srt文件缺少尾部空行 进行报错 翻译后修复
+- [x] -b 推送信息中 夹杂错误修正建议
 - [ ] 生成默认 cw.cfg
 - [ ] 自動診斷報告系統
