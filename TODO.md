@@ -11,6 +11,7 @@
 - [x] log path fix
 - [x] err left print
 - [x] 缩进错乱
+- [x] add skrt
 
 ### 🌟 未來遠景
 - [ ] 與 Discord Bot 對接

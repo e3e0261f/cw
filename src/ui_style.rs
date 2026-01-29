@@ -4,6 +4,7 @@ use similar::{ChangeTag, TextDiff};
 const BLUE: &str = "\x1b[1;36m";
 const GREEN: &str = "\x1b[1;32m";
 const RED: &str = "\x1b[1;31m";
+const YELLOW: &str = "\x1b[1;33m";
 const RESET: &str = "\x1b[0m";
 const DIM: &str = "\x1b[2m";
 const UNDERLINE: &str = "\x1b[4m";
@@ -47,19 +48,31 @@ pub fn print_summary(reports: &[FileReport], total_duration: std::time::Duration
     println!("\n{}", DIVIDER_HEAVY);
     println!("📋 任務處理明細報告");
     println!("{}", DIVIDER_LIGHT);
+    
     let mut s_count = 0;
     for r in reports {
         let icon = match r.status {
             ResultStatus::Success => { s_count += 1; format!("{}[OK]{}", GREEN, RESET) },
-            _ => format!("{}[⚠]{}", "\x1b[1;33m", RESET),
+            _ => format!("{}[⚠]{}", YELLOW, RESET),
         };
+        
         println!("{} {} -> {}", icon, r.input_name, r.output_name);
-        for err in &r.verif_errors { println!("     \x1b[1;33m└─ 🛠  {}\x1b[0m", err); }
+        
+        // 【修正點】：直接印出具體的錯誤/建議內容，讓使用者不必去猜
+        for err in &r.verif_errors {
+            println!("     \x1b[1;33m├─ 🛠  提示: {}{}", err, RESET);
+        }
+        for issue in &r.original_issues {
+            println!("     \x1b[1;33m├─ ⚠️  原檔問題: {}{}", issue, RESET);
+        }
+
+        println!("     ├─ 變動: {} 行 | 耗時: {:?}", r.translated_pairs.len(), r.duration);
         println!("     └─ 日誌: {}", r.temp_log_path.display());
     }
+    
     println!("{}", DIVIDER_LIGHT);
     println!("🎯 統計: 通過 {} / 總計 {} | 總耗時: {:?}", s_count, reports.len(), total_duration);
-    println!("{}", DIVIDER_HEAVY);
+    println!("{}\n", DIVIDER_HEAVY);
 }
 
 pub fn print_check_ok(msg: &str) { println!("  {} ✔ {}{}", GREEN, msg, RESET); }

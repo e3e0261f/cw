@@ -8,16 +8,18 @@ use crate::engine_translate::translate_single_line;
 
 const COL_WIDTH: usize = 48;
 
-pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
+pub fn run_detailed_compare(_unused_mode: bool, path_a: &str, path_b: &str) {
     let file_a = BufReader::new(File::open(path_a).expect("找不到 A"));
     let file_b = BufReader::new(File::open(path_b).expect("找不到 B"));
-    let config = if is_phrase_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T };
-    let converter = OpenCC::new(config).unwrap();
+    
+    // 同時準備兩種轉換器，用於智慧比對
+    let conv_s2t = OpenCC::new(DefaultConfig::S2T).unwrap();
+    let conv_s2twp = OpenCC::new(DefaultConfig::S2TWP).unwrap();
     let guard = RawGuard::new();
 
-    // 修正：移除重複的 width 引數
-    println!("\x1b[1;37m{:>4} │ {:^7} │ {:<width$} │ {:<width$}\x1b[0m", 
-             "行號", "狀態", "原始 A", "成果 B", width = COL_WIDTH);
+    let head_a = format_to_width("原始參考 (A)", COL_WIDTH);
+    let head_b = format_to_width("現有成果 (B)", COL_WIDTH);
+    println!("\x1b[1;37m{:>4} │ {:^7} │ {} │ {}\x1b[0m", "行號", "狀態", head_a, head_b);
     println!("{}", "-------------------------------------------------------------------------------------------------------------");
 
     let lines_a: Vec<String> = file_a.lines().map(|l| l.unwrap_or_default().replace('\u{feff}', "")).collect();
@@ -34,12 +36,18 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
         match (opt_a, opt_b) {
             (Some(a), Some(b)) => {
                 if a.trim().starts_with('[') { current_section = a.trim().to_string(); }
-                let expected = translate_single_line(&converter, &guard, a, &current_section);
-                if b == &expected {
+                
+                // 【核心智慧邏輯】：嘗試兩種可能的正確結果
+                let expected_s2t = translate_single_line(&conv_s2t, &guard, a, &current_section);
+                let expected_s2twp = translate_single_line(&conv_s2twp, &guard, a, &current_section);
+                
+                // 只要符合其中一種翻譯標準，或者是完全相同（如英文行），就視為 OK
+                if b == &expected_s2t || b == &expected_s2twp || b == a {
                     println!("{}{:>4} │ [ OK  ] │ {} │ {}\x1b[0m", zebra, line_num, format_to_width(a, COL_WIDTH), format_to_width(b, COL_WIDTH));
                 } else {
+                    // 如果都不符，才報錯。對比時優先顯示本土化(S2TWP)作為差異基準
                     print!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ ", line_num);
-                    print_github_diff(&expected, b);
+                    print_github_diff(&expected_s2twp, b);
                     println!();
                 }
             },
@@ -51,7 +59,6 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
     check_final_newline(path_a, path_b);
 }
 
-// 補齊遺失的函式
 fn format_to_width(s: &str, width: usize) -> String {
     let mut res = String::new();
     let mut curr_w = 0;
@@ -98,7 +105,8 @@ fn print_github_diff(expected: &str, actual: &str) {
 fn check_final_newline(path_a: &str, path_b: &str) {
     let check = |p: &str| -> bool {
         if let Ok(mut f) = File::open(p) {
-            if f.metadata().unwrap().len() == 0 { return false; }
+            let meta = f.metadata().unwrap();
+            if meta.len() == 0 { return false; }
             let _ = f.seek(SeekFrom::End(-1));
             let mut b = [0u8; 1];
             if f.read_exact(&mut b).is_ok() { return b[0] == b'\n'; }

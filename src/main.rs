@@ -63,13 +63,13 @@ fn main() -> std::io::Result<()> {
             mode_a_compare::run_detailed_compare(is_phrase_mode, &file_paths[0], &file_paths[1]);
         }
     } else {
-        let discord_status = if config.discord_webhook.is_empty() { "未設定" } else { "已就緒" };
+        let discord_status = if config.discord_webhook.is_empty() { "未設定" } else if is_discord_mode { "已就緒 (自動發送)" } else { "已就緒" };
         println!("\n\x1b[1;36m============================================================\x1b[0m");
         println!("\x1b[1;36m🚀 CW 任務啟動 | 模式: {}┃\x1b[0m", if is_phrase_mode { "專業本土化" } else { "標準簡繁" });
-        println!("\x1b[1;36mDiscord : {} | 艾特: {}┃\x1b[0m", discord_status, if mention_id.is_empty() {"無"} else {&mention_id});
+        println!("\x1b[1;36mDiscord : {} | 等級: {}┃\x1b[0m", discord_status, config.log_level);
         println!("\x1b[1;36m============================================================\x1b[0m");
         
-        let mut reports: Vec<FileReport> = Vec::new();
+        let mut reports = Vec::new();
         for (idx, path_str) in file_paths.iter().enumerate() {
             let file_start = Instant::now();
             ui_style::print_file_header(idx + 1, file_paths.len(), path_str);
@@ -87,7 +87,8 @@ fn main() -> std::io::Result<()> {
                     if config.verbosity >= 1 { ui_style::print_translated_preview(&pairs); }
                     let status = if fix || !original_issues.is_empty() { ResultStatus::VerifWarning } else { ResultStatus::Success };
                     let _ = audit::create_detailed_log_with_issues(path_str, &out_name, &abs_temp_log, &status, config.log_max_size_mb, config.log_backup_count, &original_issues);
-                    ui_style::print_check_ok(&format!("完成 ({:?})", file_start.elapsed()));
+                    let log_link = ui_style::format_abs_path_link(&abs_temp_log);
+                    ui_style::print_check_ok(&format!("完成 ({:?}) | 日誌: {}", file_start.elapsed(), log_link));
                     reports.push(FileReport {
                         input_name: path_str.clone(), output_name: out_name, temp_log_path: abs_temp_log,
                         status, verif_errors: vec![], original_issues, translated_pairs: pairs, duration: file_start.elapsed()
