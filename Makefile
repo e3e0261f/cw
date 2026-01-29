@@ -1,6 +1,5 @@
-VERSION = $(shell grep '^version =' Cargo.toml | cut -d '"' -f 2)
 # 預設執行：編譯、測試翻譯、測試對比、讀取日誌
-all: build sync translate compare
+all:  clippy fmt test build sync translate compare
 
 # 1. 編譯（release 模式）
 build:
@@ -12,7 +11,7 @@ translate:
 	@echo "正在測試翻譯功能...----------------------------------------"
 	echo "這個软件的程序數據需要優化" | cw
 	echo "這個软件的程序數據需要優化" | cw -p
-	./target/release/cw -b ./deps/test2.srt
+	./target/release/cw -b ./deps/test2.srt.txt
 # 3. 測試對比模式
 compare:
 	@echo "正在測試對比模式...----------------------------------------"
@@ -31,12 +30,13 @@ clean:
 #	rm -f /tmp/cw_*.log
 
 # 同步 TODO 到 README
-TODAY = $(shell date +%Y-%m-%d)
+# TODAY = $(shell date +%Y-%m-%d)
 sync:
 	@echo "正在同步 TODO 到 README..."
 	@sed -i '/<!-- TODO_START -->/,/<!-- TODO_END -->/{ /<!-- TODO_START -->/b; /<!-- TODO_END -->/b; d }' README.md
 	@sed -i '/<!-- TODO_START -->/r TODO.md' README.md
 
+VERSION = $(shell grep '^version =' Cargo.toml | cut -d '"' -f 2)
 release: build
 	@echo "準備發布版本 v$(VERSION)..."
 	git add .
@@ -44,3 +44,15 @@ release: build
 	git tag -a v$(VERSION) -m "Version $(VERSION)"
 	git push origin main --tags
 	@echo "🚀 版本 v$(VERSION) 已發送至 GitHub！"
+
+fmt:
+	cargo fmt --all -- --check
+
+clippy:
+	cargo clippy --all-targets -- -D warnings
+
+test:
+	cargo test -- --nocapture
+
+build:
+	cargo build --release

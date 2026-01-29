@@ -15,9 +15,15 @@ impl RawGuard {
 
     pub fn is_forbidden_zone(&self, line: &str, current_section: &str) -> bool {
         let t = line.trim();
-        if t.is_empty() || t.starts_with(';') { return true; }
-        if current_section == "[V4+ Styles]" && t.starts_with("Style:") { return true; }
-        if current_section == "[Script Info]" || current_section == "[Aegisub Project Garbage]" { return true; }
+        if t.is_empty() || t.starts_with(';') {
+            return true;
+        }
+        if current_section == "[V4+ Styles]" && t.starts_with("Style:") {
+            return true;
+        }
+        if current_section == "[Script Info]" || current_section == "[Aegisub Project Garbage]" {
+            return true;
+        }
         false
     }
 
@@ -27,9 +33,16 @@ impl RawGuard {
         for (i, c) in line.char_indices() {
             if c == ',' {
                 commas += 1;
-                if commas == 9 { split_idx = i + 1; break; }
+                if commas == 9 {
+                    split_idx = i + 1;
+                    break;
+                }
             }
         }
-        if split_idx == 0 { (line, "") } else { (&line[..split_idx], &line[split_idx..]) }
+        if split_idx == 0 {
+            (line, "")
+        } else {
+            (&line[..split_idx], &line[split_idx..])
+        }
     }
 }

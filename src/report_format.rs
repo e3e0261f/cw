@@ -16,7 +16,7 @@ pub struct FileReport {
     pub temp_log_path: PathBuf,
     pub status: ResultStatus,
     pub verif_errors: Vec<String>,
-    pub original_issues: Vec<String>, 
+    pub original_issues: Vec<String>,
     pub translated_pairs: Vec<(usize, String, String)>,
     pub duration: Duration,
 }

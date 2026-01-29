@@ -1,5 +1,5 @@
-use std::process::Command;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub struct MegaDownloader;
 
@@ -25,14 +25,19 @@ impl MegaDownloader {
         }
 
         // 優先找檔名含 cn 的
-        let target = candidates.iter()
+        let target = candidates
+            .iter()
             .find(|c| c.to_lowercase().contains("cn"))
             .unwrap_or(&candidates[0]);
 
         Ok(target.clone())
     }
 
-    pub fn fetch_file(url: &str, target_path_in_mega: &str, dest_dir: &Path) -> Result<PathBuf, String> {
+    pub fn fetch_file(
+        url: &str,
+        target_path_in_mega: &str,
+        dest_dir: &Path,
+    ) -> Result<PathBuf, String> {
         let status = Command::new("megadl")
             .arg("--path")
             .arg(dest_dir)
@@ -47,7 +52,7 @@ impl MegaDownloader {
         let file_name = Path::new(target_path_in_mega)
             .file_name()
             .ok_or("無法解析檔名")?;
-        
+
         Ok(dest_dir.join(file_name))
     }
 }

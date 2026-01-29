@@ -41,3 +41,12 @@
 - [ ] 加入 --check-only -c 模式：只掃描不轉換、不寫檔，只報告問題列表
 - [ ] 加入 --fix -f 選項：自動修檔尾空行、補空行等（但要小心，預設 off）
 - [ ] 考慮把完整性檢查做成獨立 subcommand：cw check file.srt
+
+### 建議的「更新發射代碼」綱領（2026-01 版本）
+## 目標：讓每次小更新/修 bug 都能快速、安全地發佈新版，減少手動操作。
+
+1.版本號管理原則
+- 遵循 SemVer：MAJOR.MINOR.PATCH
+-- PATCH：修 bug、優化顯示、加小檢查（e.g. v1.8.7）
+-- MINOR：加新功能（如自動編碼偵測、--check-only）（e.g. v1.9.0）
+-- MAJOR：大重構或 breaking change（目前不用）

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::fs;
 use std::env;
+use std::fs;
 
 pub struct Config {
     pub discord_webhook: String,
@@ -30,7 +30,9 @@ impl Config {
         if let Ok(content) = fs::read_to_string(cfg_path) {
             for line in content.lines() {
                 let line_clean = line.split('#').next().unwrap_or("").trim();
-                if line_clean.is_empty() { continue; }
+                if line_clean.is_empty() {
+                    continue;
+                }
                 if let Some((key, value)) = line_clean.split_once('=') {
                     let clean_value = value.trim().trim_matches('"').to_string();
                     map.insert(key.trim().to_string(), clean_value);
@@ -41,19 +43,52 @@ impl Config {
         Self {
             discord_webhook: map.get("discord_webhook").cloned().unwrap_or_default(),
             phrase_mode: map.get("phrase_mode").map(|v| v == "true").unwrap_or(false),
-            verbosity: map.get("verbosity").and_then(|v| v.parse().ok()).unwrap_or(1),
-            auto_discord: map.get("auto_discord").map(|v| v == "true").unwrap_or(false),
-            log_directory: map.get("log_directory").cloned().unwrap_or_else(|| "/tmp".to_string()),
-            log_file_prefix: map.get("log_file_prefix").cloned().unwrap_or_else(|| "cw".to_string()),
-            log_file_date_format: map.get("log_file_date_format").cloned().unwrap_or_else(|| "%Y-%m-%d".to_string()),
-            log_level: map.get("log_level").cloned().unwrap_or_else(|| "INFO".to_string()),
-            log_max_size_mb: map.get("log_max_size").and_then(|v| v.replace("MB","").trim().parse().ok()).unwrap_or(10),
-            log_backup_count: map.get("log_backup_count").and_then(|v| v.parse().ok()).unwrap_or(5),
+            verbosity: map
+                .get("verbosity")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1),
+            auto_discord: map
+                .get("auto_discord")
+                .map(|v| v == "true")
+                .unwrap_or(false),
+            log_directory: map
+                .get("log_directory")
+                .cloned()
+                .unwrap_or_else(|| "/tmp".to_string()),
+            log_file_prefix: map
+                .get("log_file_prefix")
+                .cloned()
+                .unwrap_or_else(|| "cw".to_string()),
+            log_file_date_format: map
+                .get("log_file_date_format")
+                .cloned()
+                .unwrap_or_else(|| "%Y-%m-%d".to_string()),
+            log_level: map
+                .get("log_level")
+                .cloned()
+                .unwrap_or_else(|| "INFO".to_string()),
+            log_max_size_mb: map
+                .get("log_max_size")
+                .and_then(|v| v.replace("MB", "").trim().parse().ok())
+                .unwrap_or(10),
+            log_backup_count: map
+                .get("log_backup_count")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(5),
             mention_id: map.get("mention_id").cloned().unwrap_or_default(),
-            discord_interval: map.get("discord_interval").and_then(|v| v.parse().ok()).unwrap_or(2),
-            translate_error: map.get("translate_error").map(|v| v == "true").unwrap_or(true),
+            discord_interval: map
+                .get("discord_interval")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(2),
+            translate_error: map
+                .get("translate_error")
+                .map(|v| v == "true")
+                .unwrap_or(true),
             show_stats: map.get("show_stats").map(|v| v == "true").unwrap_or(false),
-            discord_show_errors: map.get("discord_show_errors").map(|v| v == "true").unwrap_or(false),
+            discord_show_errors: map
+                .get("discord_show_errors")
+                .map(|v| v == "true")
+                .unwrap_or(false),
         }
     }
 }
