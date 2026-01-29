@@ -12,18 +12,18 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
     let mut fa = File::open(path_a).expect("找不到 A");
     let mut fb = File::open(path_b).expect("找不到 B");
 
-    // 1. 物理偵測：這份檔案是否以標準 SRT 的「空行(\n\n)」結尾
-    let a_is_standard = check_srt_physical_end(&mut fa);
-    let b_is_standard = check_srt_physical_end(&mut fb);
+    // 1. 物理偵測：直接讀取最後 4 個位元組，判定是否具備標準空行結尾 (\n\n)
+    let a_has_tail = check_physical_blank_line(&mut fa);
+    let b_has_tail = check_physical_blank_line(&mut fb);
 
-    // 2. 讀取內容（過濾掉末尾可能干擾的純空行，由物理偵測統一接管）
+    // 2. 讀取內容
     let _ = fa.seek(SeekFrom::Start(0));
     let _ = fb.seek(SeekFrom::Start(0));
     
-    // 這裡我們只取「有內容」的行進行對比，末尾的規範交給最後一行的邏輯
+    // 過濾掉結尾的純空行，由後面的物理邏輯統一處理顯示
     let lines_a: Vec<String> = BufReader::new(fa).lines()
         .map(|l| l.unwrap_or_default().replace('\u{feff}', ""))
-        .filter(|l| !l.trim().is_empty()) // 過濾空行，避免重複報錯
+        .filter(|l| !l.trim().is_empty()) 
         .collect();
     let lines_b: Vec<String> = BufReader::new(fb).lines()
         .map(|l| l.unwrap_or_default().replace('\u{feff}', ""))
@@ -34,15 +34,13 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
     let converter = OpenCC::new(config).unwrap();
     let guard = RawGuard::new();
 
-    let head_a = format_to_width("原始參考 (A)", COL_WIDTH);
-    let head_b = format_to_width("現有成果 (B)", COL_WIDTH);
-    println!("\x1b[1;37m{:>4} │ {:^7} │ {} │ {}\x1b[0m", "行號", "狀態", head_a, head_b);
+    println!("\x1b[1;37m{:>4} │ {:^7} │ {:<width$} │ {:<width$}\x1b[0m", "行號", "狀態", "原始參考 (A)", "翻譯成果 (B)", width = COL_WIDTH);
     println!("{}", "-------------------------------------------------------------------------------------------------------------");
 
     let text_lines = std::cmp::max(lines_a.len(), lines_b.len());
     let mut current_section = String::new();
 
-    // --- 第一部分：文字內容對比 ---
+    // 處理 1-8 行（文字內容）
     for i in 0..text_lines {
         let line_num = i + 1;
         let zebra = if i % 2 == 0 { "" } else { "\x1b[2m" };
@@ -61,55 +59,53 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
                     println!();
                 }
             },
-            (Some(a), None) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ {} │ \x1b[1;31m{}\x1b[0m", 
-                line_num, format_to_width(a, COL_WIDTH), format_to_width("(( 缺少此行 ))", COL_WIDTH)),
-            (None, Some(b)) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m{}\x1b[0m │ {}", 
-                line_num, format_to_width("(( 缺少此行 ))", COL_WIDTH), format_to_width(b, COL_WIDTH)),
+            (Some(a), None) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ {} │ \x1b[1;31m(( 缺少此行 ))\x1b[0m", line_num, format_to_width(a, COL_WIDTH)),
+            (None, Some(b)) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m(( 缺少此行 ))\x1b[0m │ {}", line_num, format_to_width(b, COL_WIDTH)),
             (None, None) => break,
         }
     }
 
-    // --- 第二部分：SRT 規範行 (結尾空行檢查) ---
-    // 這一行會緊接在文字行號之後
-    let footer_row_num = text_lines + 1;
-    let zebra_footer = if text_lines % 2 == 0 { "" } else { "\x1b[2m" };
-
-    match (a_is_standard, b_is_standard) {
+    // --- 第 9 行：專屬物理邊界診斷 ---
+    let footer_num = text_lines + 1;
+    match (a_has_tail, b_has_tail) {
         (true, true) => {
-            // 兩邊都規範，顯示最後一個 OK 空行
-            println!("{}{:>4} │ [ OK  ] │ {} │ {}\x1b[0m", 
-                zebra_footer, footer_row_num, format_to_width("", COL_WIDTH), format_to_width("", COL_WIDTH));
+            // 雙方都標準，顯示一條清爽的 OK 空行
+            println!("{:>4} │ \x1b[1;32m[ OK  ]\x1b[0m │ {:<width$} │ {:<width$}", footer_num, "", "", width = COL_WIDTH);
         },
         (false, true) => {
-            // A 沒、B 有：顯示 FIX
+            // A 沒、B 有：這是修復成功的證明
             println!("{:>4} │ \x1b[1;33m[ FIX ]\x1b[0m │ \x1b[1;31m{} │ \x1b[1;32m{}\x1b[0m", 
-                footer_row_num, format_to_width("缺少空行", COL_WIDTH), format_to_width("系統已補全", COL_WIDTH));
+                footer_num, format_to_width("缺少空行", COL_WIDTH), format_to_width("系統已補全", COL_WIDTH));
         },
         (false, false) => {
-            // 兩邊都沒：顯示雙重 ERR
+            // 雙方都沒：雙紅警告
             println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m{} │ \x1b[1;31m{}\x1b[0m", 
-                footer_row_num, format_to_width("缺少空行", COL_WIDTH), format_to_width("缺少空行", COL_WIDTH));
+                footer_num, format_to_width("缺少空行", COL_WIDTH), format_to_width("缺少空行", COL_WIDTH));
         },
         (true, false) => {
-            // A 有、B 沒：顯示成果損壞
+            // A 有、B 沒：這是嚴重的退化錯誤
             println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;32m{} │ \x1b[1;31m{}\x1b[0m", 
-                footer_row_num, format_to_width("正常", COL_WIDTH), format_to_width("缺失空行", COL_WIDTH));
+                footer_num, format_to_width("正常", COL_WIDTH), format_to_width("缺少空行", COL_WIDTH));
         }
     }
 
     println!("{}", "=============================================================================================================");
 }
 
-/// 物理檢查：檔案是否以 \n\n (或 \r\n\r\n) 結尾
-fn check_srt_physical_end(file: &mut File) -> bool {
-    let meta = file.metadata().unwrap();
-    if meta.len() < 2 { return false; }
-    let _ = file.seek(SeekFrom::End(-2));
-    let mut buf = [0u8; 2];
-    if file.read_exact(&mut buf).is_ok() {
-        return buf[1] == b'\n' && (buf[0] == b'\n' || buf[0] == b'\r');
-    }
-    false
+/// 物理檢查優化：不只看最後一個字節，要看是否以 \n\n 結尾
+fn check_physical_blank_line(file: &mut File) -> bool {
+    let len = file.metadata().map(|m| m.len()).unwrap_or(0);
+    if len < 2 { return false; }
+    
+    let mut buf = [0u8; 4]; // 讀取最後 4 個位元組以相容 CRLF
+    let seek_pos = if len >= 4 { len - 4 } else { 0 };
+    let _ = file.seek(SeekFrom::Start(seek_pos));
+    let read_len = file.read(&mut buf).unwrap_or(0);
+    let tail = &buf[..read_len];
+
+    // 檢查結尾是否為 \n\n 或 \r\n\r\n (SRT 的標準空行結尾)
+    let s = String::from_utf8_lossy(tail);
+    s.ends_with("\n\n") || s.ends_with("\n\r\n") || s.ends_with("\r\n\r\n")
 }
 
 fn format_to_width(s: &str, width: usize) -> String {
