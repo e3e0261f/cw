@@ -85,10 +85,20 @@ fn main() -> std::io::Result<()> {
             match engine_translate::run_safe_translate(is_phrase_mode, path_str, &out_name, fix) {
                 Ok(pairs) => {
                     if config.verbosity >= 1 { ui_style::print_translated_preview(&pairs); }
+                    
+                    // 根據物理現狀判定狀態
                     let status = if fix || !original_issues.is_empty() { ResultStatus::VerifWarning } else { ResultStatus::Success };
+                    
                     let _ = audit::create_detailed_log_with_issues(path_str, &out_name, &abs_temp_log, &status, config.log_max_size_mb, config.log_backup_count, &original_issues);
+                    
+                    // 只有在原檔真的缺少空行時才印黃色提醒
+                    if fix {
+                        println!("  \x1b[1;33m⚠️  提醒：原檔結尾缺少空行，系統已為成品檔補全。 (已修復)\x1b[0m");
+                    }
+
                     let log_link = ui_style::format_abs_path_link(&abs_temp_log);
-                    ui_style::print_check_ok(&format!("完成 ({:?}) | 日誌: {}", file_start.elapsed(), log_link));
+                    ui_style::print_check_ok(&format!("處理完成 | 日誌: {}", log_link));
+                    
                     reports.push(FileReport {
                         input_name: path_str.clone(), output_name: out_name, temp_log_path: abs_temp_log,
                         status, verif_errors: vec![], original_issues, translated_pairs: pairs, duration: file_start.elapsed()
