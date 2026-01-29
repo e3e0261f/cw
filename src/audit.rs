@@ -5,14 +5,17 @@ use crate::report_format::ResultStatus;
 use crate::checker;
 use chrono::Local;
 
-pub fn create_detailed_log(
+/// 【核心功能】生成詳盡日誌，包含原檔的所有稽核錯誤
+pub fn create_detailed_log_with_issues(
     path_a: &str,
     path_b: &str,
     log_path: &PathBuf,
     status: &ResultStatus,
     max_mb: u64,
     backup_count: u32,
+    issues: &[String], // 接收全量的錯誤清單
 ) -> io::Result<()> {
+    // 自動滾動日誌
     if let Ok(meta) = fs::metadata(log_path) {
         if meta.len() > max_mb * 1024 * 1024 { rotate_logs(log_path, backup_count)?; }
     }
@@ -23,7 +26,16 @@ pub fn create_detailed_log(
     let reader_b = BufReader::new(File::open(path_b)?);
 
     writeln!(log_f, "\n[ 任務批次：{} ]", now)?;
-    writeln!(log_f, "原始：{}\n成果：{}", path_a, path_b)?;
+    writeln!(log_f, "原始檔案：{}\n輸出檔案：{}", path_a, path_b)?;
+    
+    // --- 寫入全量診斷建議 (不管是 10 個還是 1000 個都記下來) ---
+    if !issues.is_empty() {
+        writeln!(log_f, "🛠️ 原檔診斷報告 (共 {} 處)：", issues.len())?;
+        for issue in issues {
+            writeln!(log_f, "   • {}", issue)?;
+        }
+    }
+    
     writeln!(log_f, "------------------------------------------------------------")?;
 
     for (idx, (l_a, l_b)) in reader_a.lines().zip(reader_b.lines()).enumerate() {
@@ -46,6 +58,6 @@ fn rotate_logs(log_path: &PathBuf, count: u32) -> io::Result<()> {
         if old.exists() { let _ = fs::rename(old, new); }
     }
     let first = log_path.with_extension("log.1");
-    fs::rename(log_path, first)?;
+    if log_path.exists() { fs::rename(log_path, first)?; }
     Ok(())
 }

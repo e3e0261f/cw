@@ -114,7 +114,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "cw"
-version = "1.7.4"
+version = "1.8.2"
 dependencies = [
  "atty",
  "chrono",
@@ -124,6 +124,7 @@ dependencies = [
  "serde",
  "serde_json",
  "similar",
+ "skrt",
  "unicode-width",
 ]
 
@@ -930,6 +931,12 @@ name = "similar"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
+
+[[package]]
+name = "skrt"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4d7c5f6bf103afc7a4d8a1075a198789f2fbe47d46f7c47199145220b89d0e0"
 
 [[package]]
 name = "slab"

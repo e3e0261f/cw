@@ -15,7 +15,9 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
     let converter = OpenCC::new(config).unwrap();
     let guard = RawGuard::new();
 
-    println!("\x1b[1;37m{:>4} │ {:^7} │ {:<width$} │ {:<width$}\x1b[0m", "行號", "狀態", "原始 A", "成果 B", width = COL_WIDTH);
+    // 修正：移除重複的 width 引數
+    println!("\x1b[1;37m{:>4} │ {:^7} │ {:<width$} │ {:<width$}\x1b[0m", 
+             "行號", "狀態", "原始 A", "成果 B", width = COL_WIDTH);
     println!("{}", "-------------------------------------------------------------------------------------------------------------");
 
     let lines_a: Vec<String> = file_a.lines().map(|l| l.unwrap_or_default().replace('\u{feff}', "")).collect();
@@ -25,7 +27,7 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
 
     for i in 0..max_lines {
         let line_num = i + 1;
-        let zebra = if i % 2 == 0 { "" } else { "\x1b[2m" }; // 斑馬紋淡化奇數行
+        let zebra = if i % 2 == 0 { "" } else { "\x1b[2m" };
         let opt_a = lines_a.get(i);
         let opt_b = lines_b.get(i);
 
@@ -41,31 +43,15 @@ pub fn run_detailed_compare(is_phrase_mode: bool, path_a: &str, path_b: &str) {
                     println!();
                 }
             },
-            (Some(a), None) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ {} │ \x1b[1;31m{}\x1b[0m", line_num, format_to_width(a, COL_WIDTH), format_to_width("(( 缺少尾部空行 srt格式錯誤 ))", COL_WIDTH)),
-            (None, Some(b)) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m{}\x1b[0m │ {}", line_num, format_to_width("(( 缺少尾部空行 srt格式錯誤 ))", COL_WIDTH), format_to_width(b, COL_WIDTH)),
+            (Some(a), None) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ {} │ \x1b[1;31m(( 缺少行 ))\x1b[0m", line_num, format_to_width(a, COL_WIDTH)),
+            (None, Some(b)) => println!("{:>4} │ \x1b[1;31m[ ERR ]\x1b[0m │ \x1b[1;31m(( 多出行 ))\x1b[0m │ {}", line_num, format_to_width(b, COL_WIDTH)),
             (None, None) => break,
         }
     }
-
-    // 末尾靈魂檢測：檢查 Byte 級別的換行符
     check_final_newline(path_a, path_b);
-    println!("{}", "=============================================================================================================");
 }
 
-fn check_final_newline(path_a: &str, path_b: &str) {
-    let check = |p: &str| -> bool {
-        if let Ok(mut f) = File::open(p) {
-            let _ = f.seek(SeekFrom::End(-1));
-            let mut b = [0u8; 1];
-            if f.read_exact(&mut b).is_ok() { return b[0] == b'\n'; }
-        }
-        false
-    };
-    if check(path_b) && !check(path_a) {
-        println!("\x1b[1;33m💡 末尾狀態: A 檔缺少換行，B 檔已由系統自動修復補完。\x1b[0m");
-    }
-}
-
+// 補齊遺失的函式
 fn format_to_width(s: &str, width: usize) -> String {
     let mut res = String::new();
     let mut curr_w = 0;
@@ -106,5 +92,20 @@ fn print_github_diff(expected: &str, actual: &str) {
             let cw = UnicodeWidthStr::width(v);
             if w_b + cw <= COL_WIDTH { print!("{}", v); w_b += cw; }
         }
+    }
+}
+
+fn check_final_newline(path_a: &str, path_b: &str) {
+    let check = |p: &str| -> bool {
+        if let Ok(mut f) = File::open(p) {
+            if f.metadata().unwrap().len() == 0 { return false; }
+            let _ = f.seek(SeekFrom::End(-1));
+            let mut b = [0u8; 1];
+            if f.read_exact(&mut b).is_ok() { return b[0] == b'\n'; }
+        }
+        false
+    };
+    if check(path_b) && !check(path_a) {
+        println!("\x1b[1;33m💡 提示: A 檔缺少換行，系統已為 B 檔自動修復。\x1b[0m");
     }
 }

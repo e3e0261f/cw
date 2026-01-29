@@ -4,7 +4,6 @@ use similar::{ChangeTag, TextDiff};
 const BLUE: &str = "\x1b[1;36m";
 const GREEN: &str = "\x1b[1;32m";
 const RED: &str = "\x1b[1;31m";
-const YELLOW: &str = "\x1b[1;33m";
 const RESET: &str = "\x1b[0m";
 const DIM: &str = "\x1b[2m";
 const UNDERLINE: &str = "\x1b[4m";
@@ -12,7 +11,7 @@ const DIVIDER_HEAVY: &str = "===================================================
 const DIVIDER_LIGHT: &str = "------------------------------------------------------------";
 
 pub fn print_help() {
-    println!("\n{}🚀 CW 專業字幕工程工作站 v1.7.2{}", BLUE, RESET);
+    println!("\n{}🚀 CW 專業字幕工程工作站 v1.8.2{}", BLUE, RESET);
     println!("{}", DIVIDER_HEAVY);
     println!("用法: cw <檔案.srt> [--task URL] [--text MSG]");
     println!("專業: cw -p <檔案> (本土化強化模式)");
@@ -52,7 +51,7 @@ pub fn print_summary(reports: &[FileReport], total_duration: std::time::Duration
     for r in reports {
         let icon = match r.status {
             ResultStatus::Success => { s_count += 1; format!("{}[OK]{}", GREEN, RESET) },
-            _ => format!("{}[⚠]{}", YELLOW, RESET),
+            _ => format!("{}[⚠]{}", "\x1b[1;33m", RESET),
         };
         println!("{} {} -> {}", icon, r.input_name, r.output_name);
         for err in &r.verif_errors { println!("     \x1b[1;33m└─ 🛠  {}\x1b[0m", err); }
