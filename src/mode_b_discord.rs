@@ -15,17 +15,17 @@ pub fn execute(
     let client = Client::new();
     let mut full_content = String::new();
 
-    if !mention_id.is_empty() { full_content.push_str(&format!("🔔 **任務提醒**：<@{}>\n", mention_id)); }
     if let Some(text) = intro_text {
-        full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        full_content.push_str("\n");
         full_content.push_str(text);
         full_content.push_str("\n");
+    if !mention_id.is_empty() { full_content.push_str(&format!("<@{}>", mention_id)); }
     }
-    full_content.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n✅ **處理清單總結**：\n");
-    for r in reports {
-        let emoji = if r.status == ResultStatus::Success { "🔹" } else { "🔸" };
-        full_content.push_str(&format!("{} `{}` (變動: {} 行)\n", emoji, r.input_name, r.translated_pairs.len()));
-    }
+    full_content.push_str("\n");
+ //    for r in reports {
+ //       let emoji = if r.status == ResultStatus::Success { "🔹" } else { "🔸" };
+ //       full_content.push_str(&format!("{} `{}` (變動: {} 行)\n", emoji, r.input_name, r.translated_pairs.len()));
+ //   }
 
     let chunks = split_content_safely(&full_content);
     println!("\n📡 正在啟動智慧傳送車...");
