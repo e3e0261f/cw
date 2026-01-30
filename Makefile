@@ -11,7 +11,7 @@ translate:
 	@echo "正在測試翻譯功能...----------------------------------------"
 	echo "這個软件的程序數據需要優化" | cw
 	echo "這個软件的程序數據需要優化" | cw -p
-	# ./target/release/cw -b ./deps/test2.srt.txt
+	./target/release/cw ./deps/test1.srt
 # 3. 測試對比模式
 compare:
 	@echo "正在測試對比模式...----------------------------------------"
