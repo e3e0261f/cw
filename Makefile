@@ -11,7 +11,7 @@ translate:
 	@echo "正在測試翻譯功能...----------------------------------------"
 	echo "這個软件的程序數據需要優化" | cw
 	echo "這個软件的程序數據需要優化" | cw -p
-	./target/release/cw -b ./deps/test2.srt.txt
+	# ./target/release/cw -b ./deps/test2.srt.txt
 # 3. 測試對比模式
 compare:
 	@echo "正在測試對比模式...----------------------------------------"
@@ -56,3 +56,11 @@ test:
 
 build:
 	cargo build --release
+
+pull:
+	@echo "拉取远端最新版本"
+# 1. 獲取遠端最新內容
+	git fetch origin 
+	git reset --hard origin/main
+# 3. 清理所有沒被 git 追蹤的「垃圾」檔案（例如剛才生成的 _fixed.srt 等）
+	git clean -fd
