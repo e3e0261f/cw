@@ -17,7 +17,8 @@ pub struct Config {
     pub discord_interval: u64,
     pub translate_error: bool,
     pub show_stats: bool,
-    pub discord_show_errors: bool, // 新增：決定是否在 Discord 顯示稽核錯誤
+    pub discord_show_errors: bool,
+    pub full_preview: bool, // 新增
 }
 
 impl Config {
@@ -88,6 +89,10 @@ impl Config {
             discord_show_errors: map
                 .get("discord_show_errors")
                 .map(|v| v == "true")
+                .unwrap_or(false),
+            full_preview: map
+                .get("full_preview") // 确保这里的 Key 字符串没有前后空格
+                .map(|v| v.trim() == "true") // 增加 trim() 增加健壮性
                 .unwrap_or(false),
         }
     }

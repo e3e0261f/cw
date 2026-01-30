@@ -83,9 +83,18 @@ fn main() -> std::io::Result<()> {
         }
     }
 
+    println!(
+        "\n全量预览: {}",
+        if config.full_preview {
+            "开启"
+        } else {
+            "关闭"
+        } // 增加这一行进行确认
+    );
+
     if is_compare_mode {
         if file_paths.len() >= 2 {
-            ui_style::print_compare_header(&file_paths[0], &file_paths[1]);
+            // ui_style::print_compare_header(&file_paths[0], &file_paths[1]);
             mode_a_compare::run_detailed_compare(is_phrase_mode, &file_paths[0], &file_paths[1]);
         }
     } else {
@@ -96,20 +105,13 @@ fn main() -> std::io::Result<()> {
         } else {
             "已就緒"
         };
-        println!("\n\x1b[1;36m============================================================\x1b[0m");
+        // println!("\n\x1b[1;36m============================================================\x1b[0m");
+        println!("翻译模式: {}", if is_phrase_mode { "TW2SP" } else { "T2S" });
         println!(
-            "\x1b[1;36m🚀 CW 任務啟動 | 模式: {}┃\x1b[0m",
-            if is_phrase_mode {
-                "專業本土化"
-            } else {
-                "標準簡繁"
-            }
-        );
-        println!(
-            "\x1b[1;36mDiscord : {} | 等級: {}┃\x1b[0m",
+            "Discord : {}  \n日志等級: {}",
             discord_status, config.log_level
         );
-        println!("\x1b[1;36m============================================================\x1b[0m");
+        println!("------------------------------------------------------------");
 
         let mut reports = Vec::new();
         for (idx, path_str) in file_paths.iter().enumerate() {
@@ -133,15 +135,20 @@ fn main() -> std::io::Result<()> {
             match engine_translate::run_safe_translate(is_phrase_mode, path_str, &out_name, fix) {
                 Ok(pairs) => {
                     if config.verbosity >= 1 {
-                        ui_style::print_translated_preview(&pairs);
+                        // 同步傳入 original_issues
+                        ui_style::print_translated_preview(
+                            &pairs,
+                            config.full_preview,
+                            &original_issues,
+                        );
                     }
 
-                    // 根據物理現狀判定狀態
                     let status = if fix || !original_issues.is_empty() {
                         ResultStatus::VerifWarning
                     } else {
                         ResultStatus::Success
                     };
+                    // ... 后面逻辑保持不变 ...
 
                     let _ = audit::create_detailed_log_with_issues(
                         path_str,

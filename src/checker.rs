@@ -1,6 +1,3 @@
-//use skrt;
-use std::fs;
-
 pub fn is_srt_structure(l: &str) -> bool {
     let t = l.trim();
     if t.is_empty() || t.contains("-->") {
@@ -79,4 +76,47 @@ pub fn needs_trailing_newline_fix(path: &str) -> bool {
         }
     }
     false
+}
+
+use std::collections::HashMap;
+use std::fs;
+
+pub fn audit_timeline_errors(path: &str) -> HashMap<String, String> {
+    let mut error_map = HashMap::new();
+
+    // 读取文件内容，移除 BOM 头
+    let content = match fs::read_to_string(path) {
+        Ok(s) => s.replace('\u{feff}', ""),
+        Err(_) => return error_map,
+    };
+
+    // 使用 skrt 解析 SRT 结构
+    if let Ok(srt_obj) = skrt::Srt::try_parse(&content) {
+        let mut last_end: Option<skrt::Timestamp> = None;
+
+        for sub in srt_obj.subtitles() {
+            let current_start = sub.start();
+            let current_end = sub.end();
+
+            // 手动合成时间轴字符串，格式与 SRT 标准一致：00:00:00,000 --> 00:00:00,000
+            // skrt 的 Timestamp 默认 Display 格式通常就是这种标准格式
+            let timeline_key = format!("{} --> {}", current_start, current_end)
+                .trim()
+                .to_string();
+
+            // 1. 内部倒序检测
+            if current_start > current_end {
+                error_map.insert(timeline_key.clone(), "時間軸倒序".to_string());
+            }
+
+            // 2. 外部重叠检测
+            if let Some(prev) = last_end {
+                if current_start < prev {
+                    error_map.insert(timeline_key, "與上行重疊".to_string());
+                }
+            }
+            last_end = Some(current_end);
+        }
+    }
+    error_map
 }

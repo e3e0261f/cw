@@ -27,22 +27,31 @@ pub fn run_safe_translate(
         if l.starts_with('\u{feff}') {
             l = l.replace('\u{feff}', "");
         }
+
+        // 處理 Section 標題 (如 ASS 的 [Events])
         if guard.section_re.is_match(l.trim()) {
             current_section = l.trim().to_string();
             writeln!(writer, "{}", l)?;
+            // 同樣存入 pairs 確保行號連續
+            translated_pairs.push((idx + 1, l.clone(), l.clone()));
             continue;
-        }
+        } // <--- 這裡結束 section 處理
+
+        // 執行翻譯
         let translated = translate_single_line(&converter, &guard, &l, &current_section);
-        if translated != l && !checker::is_srt_structure(&l) {
-            translated_pairs.push((idx + 1, l.clone(), translated.clone()));
-        }
+
+        // --- 核心修改：徹底全量收集，不加任何 if 过滤 ---
+        translated_pairs.push((idx + 1, l.clone(), translated.clone()));
+
+        // 寫入檔案
         writeln!(writer, "{}", translated)?;
-    }
+    } // <--- 這裡結束 for 循環
+
     if apply_fix {
         writeln!(writer)?;
     }
     Ok(translated_pairs)
-}
+} // <--- 這裡結束函數
 
 pub fn translate_single_line(conv: &OpenCC, guard: &RawGuard, line: &str, section: &str) -> String {
     if guard.is_forbidden_zone(line, section) || checker::is_srt_structure(line) {
