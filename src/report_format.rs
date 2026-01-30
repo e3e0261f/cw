@@ -8,15 +8,18 @@ pub enum ResultStatus {
     ConvertError,
 }
 
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct SubtitleIssue {
+    pub line: usize,
+    pub message: String,
+}
+
 pub struct FileReport {
     pub input_name: String,
     pub output_name: String,
     pub temp_log_path: PathBuf,
     pub status: ResultStatus,
-    pub verif_errors: Vec<String>,
-    pub original_issues: Vec<String>,
+    pub issues: Vec<SubtitleIssue>, // 統一所有錯誤與建議
     pub translated_pairs: Vec<(usize, String, String)>,
     pub duration: Duration,
 }

@@ -1,122 +1,59 @@
-pub fn is_srt_structure(l: &str) -> bool {
-    let t = l.trim();
-    if t.is_empty() || t.contains("-->") {
-        return true;
-    }
-    if t.chars().all(|c| c.is_ascii_digit()) && t.len() < 10 {
-        return true;
-    }
-    false
-}
+use std::fs;
+use skrt;
+use crate::report_format::SubtitleIssue;
 
-/// 使用 skrt 0.1.1 進行深度診斷
-pub fn diagnose_file(path: &str, translate: bool) -> Vec<String> {
+/// 核心功能塊：執行全量格式診斷
+pub fn diagnose_file(path: &str, translate: bool) -> Vec<SubtitleIssue> {
     let mut issues = Vec::new();
     let content = match fs::read_to_string(path) {
         Ok(s) => s.replace('\u{feff}', ""),
-        Err(_) => return vec!["[錯誤] 無法讀取檔案內容".to_string()],
+        Err(_) => return vec![SubtitleIssue { line: 0, message: "讀取失敗".to_string() }],
     };
 
-    if path.to_lowercase().ends_with(".ass") {
-        return issues;
+    if path.to_lowercase().ends_with(".ass") { return issues; }
+
+    // 1. 物理末端檢查
+    if needs_trailing_newline_fix(path) {
+        issues.push(SubtitleIssue { line: 0, message: "檔案末端損壞：缺少 SRT 規範空行".to_string() });
     }
 
+    // 2. 語法檢查 (使用 skrt)
     match skrt::Srt::try_parse(&content) {
-        Ok(srt_obj) => {
-            // 【解決 number 報錯】：使用 enumerate 產生序號，不依賴 sub.number()
-            // 【解決 start/end 報錯】：使用括號調用方法 .start() 和 .end()
-            for (idx, sub) in srt_obj.subtitles().iter().enumerate() {
+        Ok(srt) => {
+            for (idx, sub) in srt.subtitles().iter().enumerate() {
                 if sub.start() > sub.end() {
-                    issues.push(format!(
-                        "第 {} 組字幕: 時間邏輯錯誤 (結束早於開始)",
-                        idx + 1
-                    ));
+                    issues.push(SubtitleIssue { line: idx + 1, message: "時間邏輯錯誤：結束早於開始".to_string() });
                 }
             }
-        }
+        },
         Err(e) => {
-            let err_msg = if translate {
-                translate_skrt_error(e)
-            } else {
-                format!("{:?}", e)
-            };
-            issues.push(err_msg);
+            issues.push(SubtitleIssue { 
+                line: 0, 
+                message: if translate { translate_skrt_error(e) } else { format!("{:?}", e) } 
+            });
         }
     }
     issues
 }
 
-/// 對應 skrt::SrtError (v0.1.1) 實際存在的變體
 fn translate_skrt_error(err: skrt::SrtError) -> String {
     match err {
-        // 【修正】：只匹配 0.1.1 版中確實存在的變體
-        skrt::SrtError::InvalidTimestamp { position } => format!(
-            "! L{}: 時間戳格式錯誤。請檢查是否符合 [時:分:秒,毫秒] 規範。",
-            position
-        ),
-
-        skrt::SrtError::UnexpectedEof => "! 檔案非預期結束：檔案結尾不完整或格式損毀。".to_string(),
-
-        // 使用萬用匹配處理其他可能的內部錯誤
-        _ => format!("! 語法異常: {:?}", err),
+        skrt::SrtError::InvalidTimestamp { position } => format!("L{}: 時間戳格式錯誤。", position),
+        skrt::SrtError::UnexpectedEof => "檔案非預期結束".to_string(),
+        _ => format!("{:?}", err),
     }
 }
 
 pub fn needs_trailing_newline_fix(path: &str) -> bool {
-    if !path.to_lowercase().ends_with(".srt") {
-        return false;
-    }
     if let Ok(data) = fs::read(path) {
-        if data.is_empty() {
-            return true;
-        }
+        if data.is_empty() { return true; }
         let len = data.len();
-        if len < 2 || data[len - 1] != b'\n' || (data[len - 2] != b'\n' && data[len - 2] != b'\r') {
-            return true;
-        }
+        return len < 2 || data[len-1] != b'\n' || (data[len-2] != b'\n' && data[len-2] != b'\r');
     }
     false
 }
 
-use std::collections::HashMap;
-use std::fs;
-
-pub fn audit_timeline_errors(path: &str) -> HashMap<String, String> {
-    let mut error_map = HashMap::new();
-
-    // 读取文件内容，移除 BOM 头
-    let content = match fs::read_to_string(path) {
-        Ok(s) => s.replace('\u{feff}', ""),
-        Err(_) => return error_map,
-    };
-
-    // 使用 skrt 解析 SRT 结构
-    if let Ok(srt_obj) = skrt::Srt::try_parse(&content) {
-        let mut last_end: Option<skrt::Timestamp> = None;
-
-        for sub in srt_obj.subtitles() {
-            let current_start = sub.start();
-            let current_end = sub.end();
-
-            // 手动合成时间轴字符串，格式与 SRT 标准一致：00:00:00,000 --> 00:00:00,000
-            // skrt 的 Timestamp 默认 Display 格式通常就是这种标准格式
-            let timeline_key = format!("{} --> {}", current_start, current_end)
-                .trim()
-                .to_string();
-
-            // 1. 内部倒序检测
-            if current_start > current_end {
-                error_map.insert(timeline_key.clone(), "時間軸倒序".to_string());
-            }
-
-            // 2. 外部重叠检测
-            if let Some(prev) = last_end {
-                if current_start < prev {
-                    error_map.insert(timeline_key, "與上行重疊".to_string());
-                }
-            }
-            last_end = Some(current_end);
-        }
-    }
-    error_map
+pub fn is_srt_structure(l: &str) -> bool {
+    let t = l.trim();
+    t.is_empty() || t.contains("-->") || (t.chars().all(|c| c.is_ascii_digit()) && t.len() < 10)
 }

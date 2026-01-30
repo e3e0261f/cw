@@ -1,6 +1,6 @@
 [package]
 name = "cw"
-version = "1.9.0"
+version = "1.9.1"
 edition = "2021"
 
 [dependencies]
@@ -14,7 +14,9 @@ serde_json = "1.0"
 atty = "0.2"
 reqwest = { version = "0.11", features = ["blocking", "multipart"] }
 skrt = "0.1.1"
-colored = "3.1.1"
+colored = "2.0"
+encoding_rs = "0.8"
+chardetng = "0.1"
 
 # The profile that 'dist' will build with
 [profile.dist]
