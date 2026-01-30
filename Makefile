@@ -54,9 +54,6 @@ clippy:
 test:
 	cargo test -- --nocapture
 
-build:
-	cargo build --release
-
 pull:
 	@echo "拉取远端最新版本"
 # 1. 獲取遠端最新內容

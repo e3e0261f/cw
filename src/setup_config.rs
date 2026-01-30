@@ -18,6 +18,7 @@ pub struct Config {
     pub translate_error: bool,
     pub show_stats: bool,
     pub discord_show_errors: bool,
+    pub full_preview: bool,
 }
 
 impl Config {
@@ -52,6 +53,7 @@ impl Config {
             translate_error: map.get("translate_error").map(|v| v == "true").unwrap_or(true),
             show_stats: map.get("show_stats").map(|v| v == "true").unwrap_or(false),
             discord_show_errors: map.get("discord_show_errors").map(|v| v == "true").unwrap_or(false),
+            full_preview: map.get("full_preview").map(|v| v == "true").unwrap_or(false),
         }
     }
 
@@ -59,8 +61,9 @@ impl Config {
         let mut path = env::current_exe().unwrap_or_default();
         path.pop();
         let cfg_path = path.join("cw.cfg");
-        let template = "# CW 專業字幕工程工作站 - 配置文件\nphrase_mode = false\nverbosity = 1\ndiscord_webhook = \"\"\nauto_discord = false\nmention_id = \"\"\ndiscord_show_errors = false\nshow_stats = false\ndiscord_interval = 2\ntranslate_error = true\nlog_directory = \"./logs\"\nlog_file_prefix = \"cw\"\nlog_file_date_format = \"%Y-%m-%d\"\nlog_level = \"INFO\"\nlog_max_size = 10MB\nlog_backup_count = 5\n";
+        let template = include_str!("../default_cw.cfg");
         fs::write(cfg_path, template)?;
+        println!("\x1b[1;32m✨ 已生成預設 cw.cfg\x1b[0m");
         Ok(())
     }
 }

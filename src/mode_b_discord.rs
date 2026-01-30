@@ -1,13 +1,13 @@
 use reqwest::blocking::{multipart, Client};
 use std::{fs, thread, time::Duration};
 use std::path::Path;
-use crate::report_format::{FileReport, ResultStatus};
+use cw::report_format::{FileReport, ResultStatus};
 
 const DISCORD_LIMIT: usize = 1950;
 
 pub fn execute(
     webhook_url: &str, 
-    intro_text: Option<&str>, 
+    _intro_text: Option<&str>, 
     mention_id: &str, 
     interval: u64,
     show_stats: bool,
@@ -17,29 +17,13 @@ pub fn execute(
     let client = Client::new();
     let mut full_content = String::new();
 
-    if let Some(text) = intro_text {
-        full_content.push_str(text);
-        full_content.push('\n');
-    }
-
     if show_stats {
-        for r in reports {
-            full_content.push_str(&format!("`{}` (變動: {} 行)\n", r.input_name, r.translated_pairs.len()));
-        }
+        for r in reports { full_content.push_str(&format!("`{}` (變動: {} 行)\n", r.input_name, r.translated_pairs.len())); }
     }
-
     if show_errors {
-        for r in reports {
-            // 修正：讀取 SubtitleIssue 的 message
-            for issue in &r.issues {
-                full_content.push_str(&format!("! {}\n", issue.message));
-            }
-        }
+        for r in reports { for issue in &r.issues { full_content.push_str(&format!("! {}\n", issue.message)); } }
     }
-
-    if !mention_id.is_empty() {
-        full_content.push_str(&format!("<@{}>", mention_id));
-    }
+    if !mention_id.is_empty() { full_content.push_str(&format!("<@{}>", mention_id)); }
 
     let chunks = split_content_safely(&full_content);
     let chunks_to_send = if chunks.is_empty() { vec!["".to_string()] } else { chunks };
@@ -47,7 +31,6 @@ pub fn execute(
     for (i, chunk) in chunks_to_send.iter().enumerate() {
         let is_last = i == chunks_to_send.len() - 1;
         let mut form = multipart::Form::new().text("content", chunk.clone());
-
         if is_last {
             let mut count = 0;
             for r in reports {

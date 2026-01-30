@@ -8,7 +8,6 @@ pub fn run_safe_translate(p_mode: bool, input: &str, output: &str, fix: bool) ->
     let conv = OpenCC::new(if p_mode { DefaultConfig::S2TWP } else { DefaultConfig::S2T }).unwrap();
     let guard = RawGuard::new();
     
-    // 【鐵胃核心】：偵測並轉碼
     let raw_bytes = fs::read(input)?;
     let mut detector = EncodingDetector::new();
     detector.feed(&raw_bytes, true);
@@ -21,14 +20,10 @@ pub fn run_safe_translate(p_mode: bool, input: &str, output: &str, fix: bool) ->
 
     for (i, line) in content.lines().enumerate() {
         let mut l = line.replace('\u{feff}', "");
-        l = l.trim_end().to_string(); // 格式標準化
-
+        l = l.trim_end().to_string(); 
         if guard.section_re.is_match(l.trim()) { section = l.trim().to_string(); }
         let trans = translate_single_line(&conv, &guard, &l, &section);
-        
-        if trans != l && !checker::is_srt_structure(&l) {
-            pairs.push((i + 1, l.clone(), trans.clone()));
-        }
+        pairs.push((i + 1, l.clone(), trans.clone()));
         writeln!(writer, "{}", trans)?;
     }
     if fix { writeln!(writer)?; }

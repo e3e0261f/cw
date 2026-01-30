@@ -2,7 +2,6 @@ use std::fs;
 use skrt;
 use crate::report_format::SubtitleIssue;
 
-/// 核心功能塊：執行全量格式診斷
 pub fn diagnose_file(path: &str, translate: bool) -> Vec<SubtitleIssue> {
     let mut issues = Vec::new();
     let content = match fs::read_to_string(path) {
@@ -12,36 +11,23 @@ pub fn diagnose_file(path: &str, translate: bool) -> Vec<SubtitleIssue> {
 
     if path.to_lowercase().ends_with(".ass") { return issues; }
 
-    // 1. 物理末端檢查
     if needs_trailing_newline_fix(path) {
         issues.push(SubtitleIssue { line: 0, message: "檔案末端損壞：缺少 SRT 規範空行".to_string() });
     }
 
-    // 2. 語法檢查 (使用 skrt)
     match skrt::Srt::try_parse(&content) {
         Ok(srt) => {
-            for (idx, sub) in srt.subtitles().iter().enumerate() {
+            for sub in srt.subtitles() {
                 if sub.start() > sub.end() {
-                    issues.push(SubtitleIssue { line: idx + 1, message: "時間邏輯錯誤：結束早於開始".to_string() });
+                    issues.push(SubtitleIssue { line: sub.number() as usize, message: "時間邏輯錯誤：結束早於開始".to_string() });
                 }
             }
         },
         Err(e) => {
-            issues.push(SubtitleIssue { 
-                line: 0, 
-                message: if translate { translate_skrt_error(e) } else { format!("{:?}", e) } 
-            });
+            issues.push(SubtitleIssue { line: 0, message: if translate { format!("語法異常: {:?}", e) } else { format!("{:?}", e) } });
         }
     }
     issues
-}
-
-fn translate_skrt_error(err: skrt::SrtError) -> String {
-    match err {
-        skrt::SrtError::InvalidTimestamp { position } => format!("L{}: 時間戳格式錯誤。", position),
-        skrt::SrtError::UnexpectedEof => "檔案非預期結束".to_string(),
-        _ => format!("{:?}", err),
-    }
 }
 
 pub fn needs_trailing_newline_fix(path: &str) -> bool {
